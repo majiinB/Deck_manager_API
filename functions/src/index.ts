@@ -25,11 +25,10 @@
  * To start the server, run `firebase emulators:start`. The server will listen
  * on the specified port.
  *
- * @module index
  *
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-03-26
+ * @updated 2025-03-27
  */
 import * as functions from "firebase-functions";
 import express from "express";
