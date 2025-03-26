@@ -12,21 +12,13 @@
  * - Configures Firebase Admin SDK with the credentials to enable
  *   authentication services.
  *
- * Middleware:
- * - verifyFirebaseToken: Middleware that verifies Firebase ID tokens sent
- *   in Authorization headers.
- *   - If valid, attaches the decoded user data to `req.user` and allows the
- *     request to proceed.
- *   - If invalid or missing, returns an unauthorized error response.
- *
  * External Dependencies:
  * - firebase-admin: Firebase Admin SDK for server-side authentication.
  * - fs: Reads the service account JSON file.
  *
  * Environment Variables:
- * - KEY_FILE: Path to the Firebase service account JSON file.
+ * - DECK_SERVICE_ACCOUNT_PATH: Path to the Firebase service account JSON file.
  *
- * @module firebaseAdmin
  * @author Arthur M. Artugue
  * @created 2025-03-26
  * @updated 2025-03-26
@@ -68,9 +60,12 @@ export class FirebaseAdmin {
 
     this.serviceAccount = JSON.parse(readFileSync(this.path, "utf-8")) as admin.ServiceAccount;
 
-    admin.initializeApp({
-      credential: admin.credential.cert(this.serviceAccount),
-    });
+    // Singleton
+    if (admin.apps.length === 0) {
+      admin.initializeApp({
+        credential: admin.credential.cert(this.serviceAccount),
+      });
+    }
 
     this.db = admin.firestore();
   }
@@ -81,5 +76,13 @@ export class FirebaseAdmin {
    */
   protected getDb(): FirebaseFirestore.Firestore {
     return this.db;
+  }
+
+  /**
+   * Retrieves the Firebase Admin auth instance.
+   * @return {admin.auth.Auth} The Firebase Admin auth instance.
+   */
+  protected getAuth(): admin.auth.Auth {
+    return admin.auth();
   }
 }
