@@ -21,19 +21,20 @@
  * @file Routes.ts
  * @author Arthur M. Artugue
  * @created 2024-03-27
- * @updated 2025-03-27
+ * @updated 2025-03-28
  */
 
 import {Router, Request, Response} from "express";
 import {DeckController} from "../controllers/DeckController";
 import {FlashcardController} from "../controllers/FlashcardController";
+import {DeckService} from "../services/DeckService";
 import {DeckRepository} from "../repositories/DeckRepository";
 
 // eslint-disable-next-line new-cap
 const router = Router();
 
-const deckRepository = new DeckRepository();
-const deckController = new DeckController(deckRepository);
+const deckService = new DeckService(new DeckRepository);
+const deckController = new DeckController(deckService);
 const flashcardController = new FlashcardController();
 
 // DECK ROUTES
@@ -117,7 +118,7 @@ router.delete("/:deckID", async (req: Request, res: Response) => {
   await deckController.deleteDeck(req, res);
 }); // delete a deck
 
-// FLASHCARDS ROUTE
+// FLASHCARDS ROUTES
 
 /**
  * @route GET api/v1/decks/:deckID/flashcards

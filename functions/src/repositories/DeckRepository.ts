@@ -105,4 +105,42 @@ export class DeckRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+   * Retrieves a specific deck owned by a certain user.
+   * @param {string} deckID - The deck's uid.
+   * @return {Promise<object>} A promise that resolves to an array of decks.
+   */
+  public async getSpecificDeck(deckID: string): Promise<object> {
+    try {
+      // Validate inputs
+      if (!deckID || typeof deckID !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+
+      const db = this.getDb();
+      const deckRef = db
+        .collection("decks")
+        .doc(deckID);
+      const deckSnap = await deckRef.get();
+
+      if (!deckSnap.exists) throw new Error("SPECIFIC_DECK_NOT_FOUND");
+
+
+      // Extract deck data
+      const deckData = deckSnap.data();
+      const deck = deckData ? {id: deckSnap.id, ...deckData} : null;
+
+      return {
+        deck,
+      };
+    } catch (error) {
+      console.error("Error fetching decks:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("GET_SPECIFIC_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
 }

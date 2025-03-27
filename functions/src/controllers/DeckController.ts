@@ -1,21 +1,47 @@
-
+/**
+ * Deck Manager API - Controller
+ *
+ * @file DeckController.ts
+ * This module defines the controller for managing decks in the Deck Manager API.
+ * It provides methods for handling HTTP requests related to CRUD operations on decks,
+ * including fetching public and owner-specific decks, creating, updating, and deleting decks.
+ *
+ * Methods:
+ * - getOwnerDecks: Retrieves all decks owned by a specific user.
+ * - getPublicDecks: Retrieves all public (non-private) decks.
+ * - getSpecifiDeck: Retrieves a specific deck by its ID.
+ * - createDeck: Creates a new deck.
+ * - updateDeck: Updates an existing deck by its ID.
+ * - deleteDeck: Deletes a specific deck by its ID.
+ *
+ * @module controller
+ * @file DeckController.ts
+ * @class DeckController
+ * @author Arthur M. Artugue
+ * @created 2024-03-27
+ * @updated 2025-03-28
+ */
 import {Request, Response} from "express";
-import {DeckRepository} from "../repositories/DeckRepository";
+import {DeckService} from "../services/DeckService";
 
 /**
  * Class responsible for initializing and managing the services related to deck
  * management.
  */
 export class DeckController {
-  private deckRepository: DeckRepository;
+  /**
+   * Service instance responsible for handling deck-related operations.
+   * Provides methods to manage and manipulate deck data.
+   */
+  private deckService: DeckService;
 
   /**
-   * Initializes the DeckController with a DeckRepository instance.
+   * Initializes the DeckService with a DeckService instance.
    *
-   * @param {DeckRepository} deckRepository - The repository handling data operations.
+   * @param {DeckService} deckService - The service handling data transformation.
    */
-  constructor(deckRepository: DeckRepository) {
-    this.deckRepository = deckRepository;
+  constructor(deckService: DeckService) {
+    this.deckService = deckService;
   }
 
   /**
@@ -23,7 +49,7 @@ export class DeckController {
   *
   * @param {Request} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
+  * @return {Promise<void>} A JSON response containing a message indicating the action performed.
   */
   public async getOwnerDecks(req: Request, res: Response): Promise<void> {
     try {
@@ -33,16 +59,16 @@ export class DeckController {
         res.status(400).json({error: "Invalid limit value. It must be a positive number."});
         return;
       }
-      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
 
-      const decks = await this.deckRepository.getOwnerDecks(limit, nextPageToken);
+      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+      const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
 
       res.status(200).json(decks);
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);
       } else {
-        console.log("An unknown error occurred");
+        console.log("An unknown error occurred in get owner deck");
       }
     }
   }
@@ -62,16 +88,16 @@ export class DeckController {
         res.status(400).json({error: "Invalid limit value. It must be a positive number."});
         return;
       }
-      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
 
-      const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
+      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+      const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
 
       res.status(200).json(decks);
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);
       } else {
-        console.log("An unknown error occurred");
+        console.log("An unknown error occurred in get public decks");
       }
     }
   }
@@ -84,7 +110,18 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async getSpecifiDeck(req: Request, res: Response): Promise<void> {
-    res.json({message: "fetching a specific decks"});
+    try {
+      const deckId = req.params.deckID;
+      const deck = await this.deckService.getSpecificDeck(deckId);
+
+      res.status(200).json(deck);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred in get specific decks");
+      }
+    }
   }
 
   /**
