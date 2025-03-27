@@ -18,7 +18,7 @@ export class DeckController {
   }
 
   /**
-  * Handles the request to fetch a specific
+  * Handles the request to fetch a specific deck
   *
   * @param {Request} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.

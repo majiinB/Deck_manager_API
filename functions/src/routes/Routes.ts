@@ -7,16 +7,15 @@
  *
  * Routes:
  * - GET api/v1/decks/: Retrieves all decks.
- * - GET /:deckID: Retrieves a specific deck by its ID.
- * - POST /: Creates a new deck.
- * - PUT /:deckID: Updates an existing deck by its ID.
- * - DELETE /:deckID/soft: Soft deletes a deck by its ID.
- * - DELETE /:deckID/hard: Hard deletes a deck by its ID.
- * - GET /:deckID/flashcards: Retrieves all flashcards from a specific deck.
- * - GET /:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
- * - POST /:deckID/flashcards: Adds a new flashcard to a specific deck.
- * - PUT /:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
- * - DELETE /:deckID/flashcards/:flashcardID: Deletes a specific flashcard by its ID.
+ * - GET api/v1/decks/:deckID: Retrieves a specific deck by its ID.
+ * - POST api/v1/decks/: Creates a new deck.
+ * - PUT api/v1/decks/:deckID: Updates an existing deck by its ID.
+ * - DELETE api/v1/decks/:deckID: Hard deletes a deck by its ID.
+ * - GET api/v1/decks/:deckID/flashcards: Retrieves all flashcards from a specific deck.
+ * - GET api/v1/decks/:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
+ * - POST api/v1/decks/:deckID/flashcards: Adds a new flashcard to a specific deck.
+ * - PUT api/v1/decks/:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
+ * - DELETE api/v1/decks/:deckID/flashcards/:flashcardID: Deletes a specific flashcard by its ID.
  *
  * @module router
  * @file Routes.ts
@@ -27,10 +26,14 @@
 
 import {Router, Request, Response} from "express";
 import {DeckController} from "../controllers/DeckController";
+import {FlashcardController} from "../controllers/FlashcardController";
 
 // eslint-disable-next-line new-cap
 const router = Router();
 const deckController = new DeckController();
+const flashcardController = new FlashcardController();
+
+// DECK ROUTES
 
 /**
  * @route GET api/v1/decks/
@@ -85,7 +88,6 @@ router.post("/", async (req: Request, res: Response) => {
  * @body {boolean} [isDeleted] - Whether the deck is marked as deleted (optional).
  * @body {string} [madeToQuizAt] - Timestamp of when the deck was last converted to a quiz (optional).
  * @returns {object} JSON response with a success message or an error.
- * @access Private (Requires authentication)
  */
 router.put("/:deckID", async (req: Request, res: Response) => {
   await deckController.updateDeck(req, res);
@@ -96,16 +98,83 @@ router.put("/:deckID", async (req: Request, res: Response) => {
  * @description Deletes a deck permanently.
  * @param {string} deckID - The unique identifier of the deck to delete (from URL params).
  * @returns {object} JSON response with a success message or an error.
- * @access Private (Requires authentication)
  */
 router.delete("/:deckID", async (req: Request, res: Response) => {
   await deckController.deleteDeck(req, res);
 }); // delete a deck
 
-router.get("/:deckID/flashcards", ()=>{}); // get all flashcards from deck
-router.get("/:deckID/flashcards/:flashcardID", ()=>{}); // get a specific flashcard
-router.post("/:deckID/flashcards", ()=>{}); // add a flashcard to a deck
-router.put("/:deckID/flashcards/:flashcardID", ()=>{}); // update a flashcard
-router.delete("/:deckID/flashcards/:flashcardID", ()=>{}); // delete a flashcard
+// FLASHCARDS ROUTE
+
+/**
+ * @route GET api/v1/decks/:deckID/flashcards
+ * @description Fetches all flashcards.
+ * @group Decks - Operations related to flashcard decks
+ * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/:deckID/flashcards", async (req: Request, res: Response) => {
+  await flashcardController.getFlashcards(req, res);
+});
+
+/**
+ * @route GET api/v1/decks/:deckID/flascards/:flashcardID
+ * @description Fetches a specific deck by its unique identifier.
+ * @group Decks - Operations related to flashcard decks
+ *
+ * @param {string} flashcardID - The unique identifier of the deck.
+ * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).
+
+ * @returns {Object} 200 - A JSON object containing the requested deck.
+ * @returns {Error} 404 - Deck not found.
+ * @returns {Error} 500 - Internal server error.
+ */
+router.get("/:deckID/flashcards/:flashcardID", async (req: Request, res: Response) => {
+  await flashcardController.getSpecifiFlashcards(req, res);
+});
+
+/**
+ * @route POST api/v1/decks/:deckID/flashcards
+ * @description Creates a new flashcard.
+ * @group Decks - Operations related to flashcard
+ *
+ * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).
+ * @param {Object} req.body - The request body containing deck details.
+ * @param {string} req.body.term - The term of the flashcard.
+ * @param {string} req.body.definition - The definition of the flashcard.
+ *
+ * @returns {Object} 201 - A JSON object containing the created deck.
+ * @returns {Error} 400 - Bad request, missing required fields.
+ * @returns {Error} 500 - Internal server error.
+ */
+router.post("/:deckID/flashcards", async (req: Request, res: Response) => {
+  await flashcardController.createFlashcard(req, res);
+});
+
+/**
+ * @route PUT api/v1/decks/:deckID
+ * @description Updates an existing deck.
+ * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).
+ * @param {string} flashcardID - The unique identifier of the flashcard to update (from URL params).
+ * @body {string} [term] - The updated term of the flashcard (optional).
+ * @body {string} [definition] - The updated definition of the flashcard (optional).
+ * @body {boolean} [isStarred] - Whether the flaschard is marked (optional).
+ * @body {boolean} [isDeleted] - Whether the flashcard is marked as deleted (optional).
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.put("/:deckID/flashcards/:flashcardID", async (req: Request, res: Response) => {
+  await flashcardController.updateFlashcard(req, res);
+}); // update a flashcard
+
+/**
+ * @route DELETE api/v1/decks/:deckID/flashcards/:flashcardID
+ * @description Deletes a deck permanently.
+ * @param {string} deckID - The unique identifier of the the deck where the flashcard belongs (from URL params).
+ * @param {string} flaschardID - The unique identifier of the flashcard to delete (from URL params).
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.delete("/:deckID/flashcards/:flashcardID", async (req: Request, res: Response) => {
+  await flashcardController.deleteFlashcard(req, res);
+});
 
 export default router;
