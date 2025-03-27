@@ -1,20 +1,79 @@
 
 import {Request, Response} from "express";
+import {DeckRepository} from "../repositories/DeckRepository";
 
 /**
  * Class responsible for initializing and managing the services related to deck
  * management.
  */
 export class DeckController {
+  private deckRepository: DeckRepository;
+
   /**
-  * Handles the request to fetch all decks.
+   * Initializes the DeckController with a DeckRepository instance.
+   *
+   * @param {DeckRepository} deckRepository - The repository handling data operations.
+   */
+  constructor(deckRepository: DeckRepository) {
+    this.deckRepository = deckRepository;
+  }
+
+  /**
+  * Handles the request to fetch all decks that an owner owns.
   *
   * @param {Request} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async getDecks(req: Request, res: Response): Promise<void> {
-    res.json({message: "fetching all decks"});
+  public async getOwnerDecks(req: Request, res: Response): Promise<void> {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+
+      if (isNaN(limit) || limit <= 0) {
+        res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+        return;
+      }
+      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+
+      const decks = await this.deckRepository.getOwnerDecks(limit, nextPageToken);
+
+      res.status(200).json(decks);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred");
+      }
+    }
+  }
+
+  /**
+  * Handles the request to fetch all decks that are not private (is published).
+  *
+  * @param {Request} req - The HTTP request object.
+  * @param {Response} res - The HTTP response object.
+  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
+  */
+  public async getPublicDecks(req: Request, res: Response): Promise<void> {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+
+      if (isNaN(limit) || limit <= 0) {
+        res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+        return;
+      }
+      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+
+      const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
+
+      res.status(200).json(decks);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred");
+      }
+    }
   }
 
   /**

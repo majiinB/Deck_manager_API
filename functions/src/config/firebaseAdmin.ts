@@ -24,7 +24,6 @@
  * @updated 2025-03-26
  */
 import admin from "firebase-admin";
-import {readFileSync} from "fs";
 
 /**
  * Class responsible for initializing and managing the Firebase Admin SDK
@@ -32,16 +31,10 @@ import {readFileSync} from "fs";
  */
 export class FirebaseAdmin {
   /**
-  * The file path to the Firebase service account JSON file.
-  * @type {string}
-  */
-  private path: string;
-
-  /**
   * The parsed service account credentials used to initialize the Firebase Admin SDK.
   * @type {admin.ServiceAccount}
   */
-  private serviceAccount: admin.ServiceAccount;
+  // private serviceAccount: admin.ServiceAccount;
 
   /**
   * The Firestore database instance for interacting with Firestore.
@@ -54,17 +47,9 @@ export class FirebaseAdmin {
    * credentials and setting up the Firebase Admin SDK.
    */
   constructor() {
-    this.path = process.env.DECK_SERVICE_ACCOUNT_PATH || (() => {
-      throw new Error("Environment variable DECK_SERVICE_ACCOUNT_PATH is not defined.");
-    })();
-
-    this.serviceAccount = JSON.parse(readFileSync(this.path, "utf-8")) as admin.ServiceAccount;
-
     // Singleton
     if (admin.apps.length === 0) {
-      admin.initializeApp({
-        credential: admin.credential.cert(this.serviceAccount),
-      });
+      admin.initializeApp();
     }
 
     this.db = admin.firestore();

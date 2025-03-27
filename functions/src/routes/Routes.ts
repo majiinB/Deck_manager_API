@@ -27,10 +27,13 @@
 import {Router, Request, Response} from "express";
 import {DeckController} from "../controllers/DeckController";
 import {FlashcardController} from "../controllers/FlashcardController";
+import {DeckRepository} from "../repositories/DeckRepository";
 
 // eslint-disable-next-line new-cap
 const router = Router();
-const deckController = new DeckController();
+
+const deckRepository = new DeckRepository();
+const deckController = new DeckController(deckRepository);
 const flashcardController = new FlashcardController();
 
 // DECK ROUTES
@@ -43,7 +46,18 @@ const flashcardController = new FlashcardController();
  * @returns {Error} 500 - Internal Server Error
  */
 router.get("/", async (req: Request, res: Response) => {
-  await deckController.getDecks(req, res);
+  await deckController.getOwnerDecks(req, res);
+});
+
+/**
+ * @route GET api/v1/decks/public
+ * @description Fetches all decks.
+ * @group Decks - Operations related to flashcard decks
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/public", async (req: Request, res: Response) => {
+  await deckController.getPublicDecks(req, res);
 });
 
 /**
