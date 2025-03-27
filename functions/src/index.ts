@@ -25,7 +25,6 @@
  * To start the server, run `firebase emulators:start`. The server will listen
  * on the specified port.
  *
- *
  * @author Arthur M. Artugue
  * @created 2024-03-26
  * @updated 2025-03-27
@@ -35,6 +34,7 @@ import express from "express";
 import {CorsOptions} from "cors";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import deckRoutes from "./routes/Routes";
 
 /**
  * Error handler middleware.
@@ -129,7 +129,8 @@ app.use(limiter);
 app.use(express.json());
 app.use(errorHandler);
 
-app.get("/", (req, res) => {
+app.use("v1/decks", deckRoutes);
+app.get("v1/", (req, res) => {
   res.json({
     message: "Deck Manager API is running",
   });
