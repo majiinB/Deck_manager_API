@@ -33,7 +33,6 @@ import * as functions from "firebase-functions";
 import express from "express";
 import {CorsOptions} from "cors";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
 import deckRoutes from "./routes/Routes";
 
 /**
@@ -95,42 +94,18 @@ const corsOptions: CorsOptions = {
   },
 };
 
-/**
- * Configures a rate limiter middleware to control the rate of incoming requests.
- *
- * @constant
- * @type {import("express-rate-limit").RateLimit}
- *
- * @property {number} windowMs - The time frame for which requests are checked/remembered, in milliseconds (1 minute).
- * @property {number} max - The maximum number of requests allowed per `windowMs` per IP address.
- * @property {object} message - The response body sent when the rate limit is exceeded.
- * @property {boolean} headers - Whether to include rate limit headers (`X-RateLimit-*`) in the response.
- * @property {function} handler - Custom handler function invoked when the rate limit is exceeded.
- *
- * @example
- * // Example usage in an Express app:
- * app.use(limiter);
- */
-const limiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // Limit each IP to 10 requests per windowMs
-  message: {message: "Too many requests, please try again later."},
-  headers: true, // Send `X-RateLimit-*` headers
-  handler: (req, res, next) => {
-    res.status(429).json({message: "Too many requests, please try again later."});
-  },
-});
-
 const app = express();
+// Set trust proxy
+app.set("trust proxy", 1);
 
 // Middleware
 app.use(cors(corsOptions));
-app.use(limiter);
+// TODO: Add rate limiter
 app.use(express.json());
 app.use(errorHandler);
 
-app.use("v1/decks", deckRoutes);
-app.get("v1/", (req, res) => {
+app.use("/v1/decks", deckRoutes);
+app.get("/v1", (req, res) => {
   res.json({
     message: "Deck Manager API is running",
   });
