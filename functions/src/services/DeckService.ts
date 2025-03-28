@@ -127,7 +127,7 @@ export class DeckService {
   }
   /**
    * Deletes (HARD) a specific deck.
-   * @param {string} deckID - The UID of the deck to be updated.
+   * @param {string} deckID - The UID of the deck to be delete.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
   public async deleteDeck(deckID: string): Promise<void> {

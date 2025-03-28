@@ -200,11 +200,62 @@ export class FlashcardRepository extends FirebaseAdmin {
         flashcard,
       };
     } catch (error) {
-      console.error("Error updating deck:", error);
+      console.error("Error updating flashcard:", error);
       if (error instanceof Error) {
         throw new Error(error.message);
       } else {
-        throw new Error("UPDATE_DECK_UNKNOWN_ERROR");
+        throw new Error("UPDATE_FLASHCARD_UNKNOWN_ERROR");
+      }
+    }
+  }
+
+  /**
+  * Deletes a deck in the Firestore database.
+  *
+  * @async
+  * @function deleteFlashcard
+  * @param {string} deckID - The UID of the deck to be deleted.
+  * @param {string} flashcardID - The UID of the specific flashcard.
+  * @return {Promise<void>} The unique ID of the newly created deck.
+  * @throws {Error} If the input data is invalid or Firestore operation fails.
+  */
+  public async deleteFlashcard(deckID: string, flashcardID: string): Promise<void> {
+    try {
+      // Validate input
+      if (!deckID || typeof deckID !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+      if (!flashcardID || typeof flashcardID !== "string") {
+        throw new Error("INVALID_FLASHCARD_ID");
+      }
+
+      const db = this.getDb();
+      const deckRef = db.collection("decks").doc(deckID);
+
+      // Check if deck exists before deleting
+      const deckSnapshot = await deckRef.get();
+      if (!deckSnapshot.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      const flashcardRef = deckRef
+        .collection("flashcards")
+        .doc(flashcardID);
+
+      const flashcardSnapshot = await flashcardRef.get();
+      if (!flashcardSnapshot.exists) {
+        throw new Error("FLASHCARD_NOT_FOUND");
+      }
+
+      // Permanently delete the flashcard
+      await flashcardRef.delete();
+      console.log(`Flashcard with ID ${flashcardID}, from deck ${deckID} has been deleted.`);
+    } catch (error) {
+      console.error("Error deleting flashcard:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("DELETE_FLASHCARD_UNKNOWN_ERROR");
       }
     }
   }

@@ -206,6 +206,17 @@ export class FlashcardController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async deleteFlashcard(req: Request, res: Response): Promise<void> {
-    res.json({message: "deleting a flashcard"});
+    try {
+      const deckID = req.params.deckID;
+      const flashcardID = req.params.flashcardID;
+      await this.flashcardService.deleteFlashcard(deckID, flashcardID);
+      res.status(200).json({message: `Flashcard with ID of ${flashcardID} from deck ${deckID} is successfully deleted`});
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred while deleting flashcard");
+      }
+    }
   }
 }
