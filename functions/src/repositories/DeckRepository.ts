@@ -143,4 +143,43 @@ export class DeckRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+  * Creates a new deck in the Firestore database.
+  *
+  * @async
+  * @function createDeck
+  * @param {Object} deckData - The data for the new deck.
+  * @param {boolean} deckData.is_deleted - Whether the deck is deleted (soft delete flag).
+  * @param {boolean} deckData.is_private - Whether the deck is private.
+  * @param {string} deckData.title - The cleaned title of the deck.
+  * @param {string} deckData.owner_id - The ID of the deck's owner.
+  * @param {string} [deckData.cover_photo] - (Optional) URL of the deck's cover photo.
+  * @return {Promise<object>} The unique ID of the newly created deck.
+  * @throws {Error} If the input data is invalid or Firestore operation fails.
+  */
+  public async createDeck(deckData: object): Promise<object> {
+    try {
+      // Validate input
+      if (!deckData || typeof deckData !== "object") {
+        throw new Error("INVALID_DECK_DATA");
+      }
+
+      const db = this.getDb();
+
+      const res = await db.collection("decks").add(deckData);
+
+      return {
+        deck_id: res.id,
+        fields: deckData,
+      };
+    } catch (error) {
+      console.error("Error creating deck:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("CREATE_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
 }

@@ -1,4 +1,6 @@
 import {DeckRepository} from "../repositories/DeckRepository";
+import {FirebaseAdmin} from "../config/FirebaseAdmin";
+import {Utils} from "../utils/utils";
 
 /**
  * Service class responsible for handling operations related to decks.
@@ -76,6 +78,33 @@ export class DeckService {
       } else {
         console.log("An unknown error occurred");
       }
+    }
+  }
+
+  /**
+   * Retrieves a specific deck.
+   * @param {string} deckTitle - The token for the next page of results, or null for the first page.
+   * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
+   * @param {string | null} coverPhoto - The cover photo url of the uploaded jpeg.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null): Promise<object> {
+    try {
+      const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
+      const deck = {
+        title: Utils.cleanTitle(deckTitle),
+        is_deleted: false,
+        is_private: true,
+        owner_id: userID,
+        cover_photo: coverPhotoRef,
+        created_at: FirebaseAdmin.getTimeStamp(),
+      };
+
+      const decks = await this.deckRepository.createDeck(deck);
+      return decks;
+    } catch (error) {
+      console.error("Error creating deck:", error);
+      throw new Error(error instanceof Error ? error.message : "CREATE_DECK_UNKNOWN_ERROR");
     }
   }
 }

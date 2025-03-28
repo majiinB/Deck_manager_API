@@ -132,7 +132,36 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async createDeck(req: Request, res: Response): Promise<void> {
-    res.json({message: "creating a new deck"});
+    try {
+      const {deckTitle, coverPhoto} = req.body;
+      const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
+
+      if (typeof deckTitle !== "string") {
+        res.status(400).json({
+          status: 400,
+          message: "INVALID_DECK_TITLE_TYPE",
+          data: null,
+        });
+      }
+
+      if (!deckTitle?.trim()) {
+        res.status(400).json({
+          status: 400,
+          message: "DECK_TITLE_REQUIRED",
+          data: null,
+        });
+      }
+
+      const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto);
+
+      res.status(200).json(deck);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred in get specific decks");
+      }
+    }
   }
 
   /**

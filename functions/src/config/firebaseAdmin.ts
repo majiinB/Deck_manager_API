@@ -21,9 +21,10 @@
  *
  * @author Arthur M. Artugue
  * @created 2025-03-26
- * @updated 2025-03-26
+ * @updated 2025-03-28
  */
 import admin from "firebase-admin";
+import {Timestamp} from "firebase-admin/firestore";
 
 /**
  * Class responsible for initializing and managing the Firebase Admin SDK
@@ -69,5 +70,14 @@ export class FirebaseAdmin {
    */
   protected getAuth(): admin.auth.Auth {
     return admin.auth();
+  }
+
+  /**
+   * Retrieves the current timestamp using Firebase Admin's Firestore Timestamp.
+   *
+   * @return {Timestamp} The current Firestore timestamp.
+   */
+  static getTimeStamp(): Timestamp {
+    return admin.firestore.Timestamp.now();
   }
 }
