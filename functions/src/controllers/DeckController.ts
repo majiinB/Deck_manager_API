@@ -133,13 +133,21 @@ export class DeckController {
   */
   public async createDeck(req: Request, res: Response): Promise<void> {
     try {
-      const {deckTitle, coverPhoto} = req.body;
+      const {deckTitle, deckDescription, coverPhoto} = req.body;
       const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
 
       if (typeof deckTitle !== "string") {
         res.status(400).json({
           status: 400,
           message: "INVALID_DECK_TITLE_TYPE",
+          data: null,
+        });
+      }
+
+      if (typeof deckDescription !== "string") {
+        res.status(400).json({
+          status: 400,
+          message: "INVALID_DECK_DESCRIPTION_TYPE",
           data: null,
         });
       }
@@ -152,14 +160,22 @@ export class DeckController {
         });
       }
 
-      const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto);
+      if (!deckDescription?.trim()) {
+        res.status(400).json({
+          status: 400,
+          message: "DECK_DESCRIPTION_REQUIRED",
+          data: null,
+        });
+      }
+
+      const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto, deckDescription);
 
       res.status(200).json(deck);
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);
       } else {
-        console.log("An unknown error occurred in get specific decks");
+        console.log("An unknown error occurred while creating deck");
       }
     }
   }
@@ -172,7 +188,65 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async updateDeck(req: Request, res: Response): Promise<void> {
-    res.json({message: "updating a deck"});
+    try {
+      const {deckTitle, coverPhoto, isDeleted, isPrivate, deckDescription} = req.body;
+      const deckID = req.params.deckID;
+
+      const updateData: Partial<{ title: string; is_private: boolean; cover_photo: string; is_deleted: boolean; description: string}> = {};
+
+      if (deckTitle !== undefined) {
+        if (typeof deckTitle !== "string" || deckTitle.trim() === "") {
+          res.status(400).json({status: 400, message: "INVALID_TITLE", data: null});
+        }
+        updateData.title = deckTitle.trim();
+      }
+
+      if (deckDescription !== undefined) {
+        if (typeof deckDescription !== "string" || deckDescription.trim() === "") {
+          res.status(400).json({status: 400, message: "INVALID_DESCRIPTION", data: null});
+        }
+        updateData.description = deckDescription.trim();
+      }
+
+      if (isPrivate !== undefined) {
+        if (typeof isPrivate !== "boolean") {
+          res.status(400).json({status: 400, message: "INVALID_PRIVACY_VALUE", data: null});
+        }
+        updateData.is_private = isPrivate;
+      }
+
+      if (isDeleted !== undefined) {
+        if (typeof isDeleted !== "boolean") {
+          res.status(400).json({status: 400, message: "INVALID_DELETE_FLAG_VALUE", data: null});
+        }
+        updateData.is_deleted = isDeleted;
+      }
+
+      if (coverPhoto !== undefined) {
+        if (typeof coverPhoto !== "string" || !coverPhoto.startsWith("http")) {
+          res.status(400).json({status: 400, message: "INVALID_COVER_PHOTO_URL", data: null});
+        }
+        updateData.cover_photo = coverPhoto;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        res.status(400).json({
+          status: 400,
+          message: "NO_VALID_FIELDS_TO_UPDATE",
+          data: null,
+        });
+      }
+
+      const deck = await this.deckService.updateDeck(deckID, updateData);
+
+      res.status(200).json(deck);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred while updating deck");
+      }
+    }
   }
 
   /**
@@ -183,6 +257,16 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async deleteDeck(req: Request, res: Response): Promise<void> {
-    res.json({message: "deleting a deck"});
+    try {
+      const deckID = req.params.deckID;
+      await this.deckService.deleteDeck(deckID);
+      res.status(200).json({message: `Deck with ID of ${deckID} is successfully deleted`});
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred while updating deck");
+      }
+    }
   }
 }

@@ -110,7 +110,7 @@ router.put("/:deckID", async (req: Request, res: Response) => {
 
 /**
  * @route DELETE api/v1/decks/:deckID
- * @description Deletes a deck permanently.
+ * @description Deletes a deck permanently (HARD delete perform SOFT deletion by updating the is_deleted flag).
  * @param {string} deckID - The unique identifier of the deck to delete (from URL params).
  * @returns {object} JSON response with a success message or an error.
  */

@@ -83,12 +83,13 @@ export class DeckService {
 
   /**
    * Retrieves a specific deck.
-   * @param {string} deckTitle - The token for the next page of results, or null for the first page.
+   * @param {string} deckTitle - The title of the created deck.
    * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
    * @param {string | null} coverPhoto - The cover photo url of the uploaded jpeg.
+   * @param {string} description - The description of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null): Promise<object> {
+  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null, description: string): Promise<object> {
     try {
       const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
       const deck = {
@@ -98,6 +99,7 @@ export class DeckService {
         owner_id: userID,
         cover_photo: coverPhotoRef,
         created_at: FirebaseAdmin.getTimeStamp(),
+        description: description,
       };
 
       const decks = await this.deckRepository.createDeck(deck);
@@ -105,6 +107,35 @@ export class DeckService {
     } catch (error) {
       console.error("Error creating deck:", error);
       throw new Error(error instanceof Error ? error.message : "CREATE_DECK_UNKNOWN_ERROR");
+    }
+  }
+
+  /**
+   * Updates a specific deck.
+   * @param {string} deckID - The UID of the deck to be updated.
+   * @param {object} updateData - The title of the created deck.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async updateDeck(deckID: string, updateData: object): Promise<object> {
+    try {
+      const updatedDeck = await this.deckRepository.updateDeck(deckID, updateData);
+      return updatedDeck;
+    } catch (error) {
+      console.error("Error creating deck:", error);
+      throw new Error(error instanceof Error ? error.message : "CREATE_DECK_UNKNOWN_ERROR");
+    }
+  }
+  /**
+   * Deletes (HARD) a specific deck.
+   * @param {string} deckID - The UID of the deck to be updated.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async deleteDeck(deckID: string): Promise<void> {
+    try {
+      await this.deckRepository.deleteDeck(deckID);
+    } catch (error) {
+      console.error("Error deleting deck:", error);
+      throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");
     }
   }
 }

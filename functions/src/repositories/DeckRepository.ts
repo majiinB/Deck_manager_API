@@ -108,7 +108,8 @@ export class DeckRepository extends FirebaseAdmin {
 
   /**
    * Retrieves a specific deck owned by a certain user.
-   * @param {string} deckID - The deck's uid.
+   * @async
+   * @param {string} deckID - The deck's UID.
    * @return {Promise<object>} A promise that resolves to an array of decks.
    */
   public async getSpecificDeck(deckID: string): Promise<object> {
@@ -179,6 +180,88 @@ export class DeckRepository extends FirebaseAdmin {
         throw new Error(error.message);
       } else {
         throw new Error("CREATE_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
+
+  /**
+  * Updates a deck document in Firestore with the provided data.
+  *
+  * @async
+  * @function updateDeck
+  * @param {string} deckId - The unique identifier of the deck to update.
+  * @param {Object} data - The key-value pairs representing the fields to update.
+  * @return {Promise<object>} - Resolves if the update is successful.
+  * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
+  */
+  public async updateDeck(deckId: string, data: object): Promise<object> {
+    try {
+      // Validate inputs
+      if (!deckId || typeof deckId !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("INVALID_UPDATE_DATA");
+      }
+      const db = this.getDb();
+
+      const deckRef = db.collection("decks").doc(deckId);
+      await deckRef.update(data);
+
+      const updatedDeck = await deckRef.get();
+
+      if (!updatedDeck.exists) {
+        throw new Error("DECK_NOT_FOUND_AFTER_UPDATE");
+      }
+
+      return {
+        deck_id: deckId,
+        fields: {...updatedDeck.data()},
+      };
+    } catch (error) {
+      console.error("Error updating deck:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("UPDATE_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
+
+  /**
+  * Deletes a deck in the Firestore database.
+  *
+  * @async
+  * @function deleteDeck
+  * @param {string} deckID - The UID of the deck to be deleted.
+  * @return {Promise<void>} The unique ID of the newly created deck.
+  * @throws {Error} If the input data is invalid or Firestore operation fails.
+  */
+  public async deleteDeck(deckID: string): Promise<void> {
+    try {
+      // Validate input
+      if (!deckID || typeof deckID !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+
+      const db = this.getDb();
+      const deckRef = db.collection("decks").doc(deckID);
+
+      // Check if deck exists before deleting
+      const deckSnapshot = await deckRef.get();
+      if (!deckSnapshot.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      // Permanently delete the deck
+      await deckRef.delete();
+      console.log(`Deck with ID ${deckID} has been deleted.`);
+    } catch (error) {
+      console.error("Error deleting deck:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("CDELETE_DECK_UNKNOWN_ERROR");
       }
     }
   }
