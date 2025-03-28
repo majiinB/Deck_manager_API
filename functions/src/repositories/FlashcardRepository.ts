@@ -105,4 +105,45 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+  * Creates a new flashcard in the Firestore database.
+  *
+  * @async
+  * @function createFlashcard
+  * @param {string} deckID - The deck's UID.
+  * @param {Object} flashcardData - The data for the new flashcard.
+  * @return {Promise<object>} The unique ID of the newly created deck.
+  * @throws {Error} If the input data is invalid or Firestore operation fails.
+  */
+  public async createFlashcard(deckID: string, flashcardData: object): Promise<object> {
+    try {
+      // Validate input
+      if (!flashcardData || typeof flashcardData !== "object") {
+        throw new Error("INVALID_FLASHCARD_DATA");
+      }
+
+      const db = this.getDb();
+
+      const query = db.collection("decks").doc(deckID);
+      const deck = await query.get();
+
+      if (!deck.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      const flashcard = await query.collection("flashcards").add(flashcardData);
+      const newFlashcard = flashcard ? {id: flashcard.id, ...flashcardData} : null;
+      return {
+        newFlashcard,
+      };
+    } catch (error) {
+      console.error("Error creating flashcard :", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("CREATE_FLASHCARD_UNKNOWN_ERROR");
+      }
+    }
+  }
 }

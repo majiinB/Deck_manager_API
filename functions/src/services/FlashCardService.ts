@@ -1,3 +1,4 @@
+import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {FlashcardRepository} from "../repositories/FlashcardRepository";
 
 /**
@@ -57,6 +58,31 @@ export class FlashcardService {
       } else {
         console.log("An unknown error occurred");
       }
+    }
+  }
+
+  /**
+  * Creates a deck entity
+  * @param {string} deckID - The title of the created deck.
+  * @param {string} term - The ID of the one who owns and requested for the creation of deck.
+  * @param {string} definition - The cover photo url of the uploaded jpeg.
+  * @return {Promise<object>} A promise resolving to the owner's deck data.
+  */
+  public async createFlashcard(deckID:string, term: string, definition: string): Promise<object> {
+    try {
+      const flashcard = {
+        term: term,
+        is_deleted: false,
+        is_starred: false,
+        definition: definition,
+        created_at: FirebaseAdmin.getTimeStamp(),
+      };
+
+      const newFlashcard = await this.flashcardRepository.createFlashcard(deckID, flashcard);
+      return newFlashcard;
+    } catch (error) {
+      console.error("Error creating flashcard:", error);
+      throw new Error(error instanceof Error ? error.message : "CREATE_FLASHCARD_UNKNOWN_ERROR");
     }
   }
 }

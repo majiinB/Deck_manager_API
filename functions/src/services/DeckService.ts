@@ -82,7 +82,7 @@ export class DeckService {
   }
 
   /**
-   * Retrieves a specific deck.
+   * Creates a deck entity
    * @param {string} deckTitle - The title of the created deck.
    * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
    * @param {string | null} coverPhoto - The cover photo url of the uploaded jpeg.
