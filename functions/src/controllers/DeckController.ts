@@ -111,8 +111,8 @@ export class DeckController {
   */
   public async getSpecifiDeck(req: Request, res: Response): Promise<void> {
     try {
-      const deckId = req.params.deckID;
-      const deck = await this.deckService.getSpecificDeck(deckId);
+      const deckID = req.params.deckID;
+      const deck = await this.deckService.getSpecificDeck(deckID);
 
       res.status(200).json(deck);
     } catch (error) {

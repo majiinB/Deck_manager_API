@@ -149,7 +149,7 @@ router.get("/:deckID/flashcards", async (req: Request, res: Response) => {
  * @returns {Error} 500 - Internal server error.
  */
 router.get("/:deckID/flashcards/:flashcardID", async (req: Request, res: Response) => {
-  await flashcardController.getSpecificFlashcards(req, res);
+  await flashcardController.getSpecificFlashcard(req, res);
 });
 
 /**

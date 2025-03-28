@@ -62,4 +62,47 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+   * Retrieves a specific deck owned by a certain user.
+   * @async
+   * @param {string} deckID - The deck's UID.
+   * @param {string} flashcardID - The flahscard's UID.
+   * @return {Promise<object>} A promise that resolves to an array of decks.
+   */
+  public async getSpecificFlashcard(deckID: string, flashcardID: string): Promise<object> {
+    try {
+      // Validate inputs
+      if (!deckID || typeof deckID !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+      if (!flashcardID || typeof flashcardID !== "string") {
+        throw new Error("INVALID_FLASHCARD_ID");
+      }
+
+      const db = this.getDb();
+      const flashcardRef = db
+        .collection("decks")
+        .doc(deckID)
+        .collection("flashcards")
+        .doc(flashcardID);
+      const flashcardSnap = await flashcardRef.get();
+
+      if (!flashcardSnap.exists) throw new Error("SPECIFIC_DECK_NOT_FOUND");
+
+      // Extract deck data
+      const flashcard = flashcardSnap.data() ? {id: flashcardSnap.id, ...flashcardSnap.data()} : null;
+
+      return {
+        flashcard,
+      };
+    } catch (error) {
+      console.error("Error fetching flashcards:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("GET_SPECIFIC_FLASHCARD_UNKNOWN_ERROR");
+      }
+    }
+  }
 }

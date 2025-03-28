@@ -65,7 +65,7 @@ export class DeckService {
 
   /**
    * Retrieves a specific deck.
-   * @param {string} deckID - The token for the next page of results, or null for the first page.
+   * @param {string} deckID - The UID of the specific flashcard.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
   public async getSpecificDeck(deckID:string): Promise<object | void> {

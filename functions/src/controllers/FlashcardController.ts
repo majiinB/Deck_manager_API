@@ -61,8 +61,21 @@ export class FlashcardController {
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async getSpecificFlashcards(req: Request, res: Response): Promise<void> {
-    res.json({message: "fetching a specific decks"});
+  public async getSpecificFlashcard(req: Request, res: Response): Promise<void> {
+    try {
+      const deckID = req.params.deckID;
+      const flashcardID = req.params.flashcardID;
+
+      const flashcard = await this.flashcardService.getSpecificFlashcard(deckID, flashcardID);
+
+      res.status(200).json(flashcard);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred in get specific decks");
+      }
+    }
   }
 
   /**

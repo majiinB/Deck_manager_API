@@ -13,7 +13,7 @@ export class FlashcardService {
   private flashcardRepository: FlashcardRepository;
 
   /**
-   * Initializes the DeckService with a DeckRepository instance.
+   * Initializes the FlashcardRepository with a FlashcardRepository instance.
    *
    * @param {FlashcardRepository} flashcardRepository - The repository handling data operations.
    */
@@ -22,7 +22,7 @@ export class FlashcardService {
   }
 
   /**
-   * Retrieves the deck owned by the current user.
+   * Retrieves the flashcards of a specific deck.
    * @param {string} deckID - The deck's UID.
    * @param {number} limit - The maximum number of decks to retrieve.
    * @param {string | null} nextPageToken - The token for the next page of results, or null for the first page.
@@ -32,6 +32,25 @@ export class FlashcardService {
     try {
       const flashcards = await this.flashcardRepository.getFlashcards(deckID, limit, nextPageToken);
       return flashcards;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred");
+      }
+    }
+  }
+
+  /**
+   * Retrieves a specific flashcard.
+   * @param {string} deckID - The UID of the specific deck.
+   * @param {string} flashcardID - The UID of the specific flashcard.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async getSpecificFlashcard(deckID:string, flashcardID: string): Promise<object | void> {
+    try {
+      const decks = await this.flashcardRepository.getSpecificFlashcard(deckID, flashcardID);
+      return decks;
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);
