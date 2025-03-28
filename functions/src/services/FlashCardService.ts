@@ -85,4 +85,21 @@ export class FlashcardService {
       throw new Error(error instanceof Error ? error.message : "CREATE_FLASHCARD_UNKNOWN_ERROR");
     }
   }
+
+  /**
+   * Updates a specific flashcard.
+   * @param {string} deckID - The UID of the deck to be updated.
+   * @param {string} flashcardID - The UID of the specific flashcard.
+   * @param {object} updateData - The title of the created deck.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async updateFlashcard(deckID: string, flashcardID: string, updateData: object): Promise<object> {
+    try {
+      const updatedFlashcard = await this.flashcardRepository.updateFlashcard(deckID, flashcardID, updateData);
+      return updatedFlashcard;
+    } catch (error) {
+      console.error("Error updating flashcard:", error);
+      throw new Error(error instanceof Error ? error.message : "UPDATE_FLASHCARD_UNKNOWN_ERROR");
+    }
+  }
 }

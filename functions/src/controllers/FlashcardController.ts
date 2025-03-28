@@ -143,7 +143,59 @@ export class FlashcardController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async updateFlashcard(req: Request, res: Response): Promise<void> {
-    res.json({message: "updating a flashcard"});
+    try {
+      const {term, definition, isDeleted, isStarred} = req.body;
+      const deckID = req.params.deckID;
+      const flashcardID = req.params.flashcardID;
+
+      const updateData: Partial<{ term: string; definition:string; is_deleted: boolean; is_starred: boolean;}> = {};
+
+      if (term !== undefined) {
+        if (typeof term !== "string" || term.trim() === "") {
+          res.status(400).json({status: 400, message: "INVALID_TERM", data: null});
+        }
+        updateData.term = term.trim();
+      }
+
+      if (definition !== undefined) {
+        if (typeof definition !== "string" || definition.trim() === "") {
+          res.status(400).json({status: 400, message: "INVALID_DEFINITION", data: null});
+        }
+        updateData.definition = definition.trim();
+      }
+
+      if (isStarred !== undefined) {
+        if (typeof isStarred !== "boolean") {
+          res.status(400).json({status: 400, message: "INVALID_FLAG_VALUE", data: null});
+        }
+        updateData.is_starred = isStarred;
+      }
+
+      if (isDeleted !== undefined) {
+        if (typeof isDeleted !== "boolean") {
+          res.status(400).json({status: 400, message: "INVALID_DELETE_FLAG_VALUE", data: null});
+        }
+        updateData.is_deleted = isDeleted;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        res.status(400).json({
+          status: 400,
+          message: "NO_VALID_FIELDS_TO_UPDATE",
+          data: null,
+        });
+      }
+
+      const deck = await this.flashcardService.updateFlashcard(deckID, flashcardID, updateData);
+
+      res.status(200).json(deck);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred while updating flashcard");
+      }
+    }
   }
 
   /**

@@ -146,4 +146,66 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+  * Updates a deck document in Firestore with the provided data.
+  *
+  * @async
+  * @function updateDeck
+  * @param {string} deckId - The unique identifier of the deck to update.
+  * @param {string} flashcardID - The UID of the specific flashcard.
+  * @param {Object} data - The key-value pairs representing the fields to update.
+  * @return {Promise<object>} - Resolves if the update is successful.
+  * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
+  */
+  public async updateFlashcard(deckId: string, flashcardID: string, data: object): Promise<object> {
+    try {
+      // Validate inputs
+      if (!deckId || typeof deckId !== "string") {
+        throw new Error("INVALID_DECK_ID");
+      }
+
+      if (!flashcardID || typeof flashcardID !== "string") {
+        throw new Error("INVALID_FLASHCARD_ID");
+      }
+
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("INVALID_UPDATE_DATA");
+      }
+
+      const db = this.getDb();
+
+      const deckRef = db.collection("decks").doc(deckId);
+      const deck = await deckRef.get();
+
+      if (!deck.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      const flashcardRef = deckRef
+        .collection("flashcards")
+        .doc(flashcardID);
+
+      await flashcardRef.update(data);
+
+      const updatedFlashcard = await flashcardRef.get();
+
+      if (!updatedFlashcard.exists) {
+        throw new Error("DECK_NOT_FOUND_AFTER_UPDATE");
+      }
+
+      const flashcard = updatedFlashcard ? {id: flashcardID, ...updatedFlashcard.data()} : null;
+
+      return {
+        flashcard,
+      };
+    } catch (error) {
+      console.error("Error updating deck:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("UPDATE_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
 }
