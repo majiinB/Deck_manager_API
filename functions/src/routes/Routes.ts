@@ -29,13 +29,17 @@ import {DeckController} from "../controllers/DeckController";
 import {FlashcardController} from "../controllers/FlashcardController";
 import {DeckService} from "../services/DeckService";
 import {DeckRepository} from "../repositories/DeckRepository";
+import {FlashcardService} from "../services/FlashCardService";
+import {FlashcardRepository} from "../repositories/FlashcardRepository";
 
 // eslint-disable-next-line new-cap
 const router = Router();
 
 const deckService = new DeckService(new DeckRepository);
 const deckController = new DeckController(deckService);
-const flashcardController = new FlashcardController();
+
+const flashcardService = new FlashcardService(new FlashcardRepository);
+const flashcardController = new FlashcardController(flashcardService);
 
 // DECK ROUTES
 
@@ -145,7 +149,7 @@ router.get("/:deckID/flashcards", async (req: Request, res: Response) => {
  * @returns {Error} 500 - Internal server error.
  */
 router.get("/:deckID/flashcards/:flashcardID", async (req: Request, res: Response) => {
-  await flashcardController.getSpecifiFlashcards(req, res);
+  await flashcardController.getSpecificFlashcards(req, res);
 });
 
 /**

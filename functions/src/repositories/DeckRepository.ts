@@ -261,7 +261,7 @@ export class DeckRepository extends FirebaseAdmin {
       if (error instanceof Error) {
         throw new Error(error.message);
       } else {
-        throw new Error("CDELETE_DECK_UNKNOWN_ERROR");
+        throw new Error("DELETE_DECK_UNKNOWN_ERROR");
       }
     }
   }
