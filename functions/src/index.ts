@@ -31,8 +31,8 @@
  */
 import * as functions from "firebase-functions";
 import express from "express";
-import {CorsOptions} from "cors";
-import cors from "cors";
+import cors, {CorsOptions} from "cors";
+
 import deckRoutes from "./routes/Routes";
 
 /**
@@ -42,23 +42,22 @@ import deckRoutes from "./routes/Routes";
  * @param {Error} err - The error object.
  * @param {express.Request} req - The Express request object.
  * @param {express.Response} res - The Express response object.
- * @param {express.NextFunction} next - The next middleware function.
+ * @param {express.NextFunction} _next - The next middleware function.
  * @return {void}
  */
-function errorHandler(
-  err: Error,
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-): void {
-  if (err.message === "Not allowed by CORS") {
-    res.status(403).json({message: "CORS policy blocked this request"});
-  } else {
-    res.status(422).json({
-      error: "Unprocessable Entity, check your request data",
-    });
-  }
-}
+// function errorHandler(
+//   err: Error,
+//   req: express.Request,
+//   res: express.Response,
+// ): void {
+//   if (err.message === "Not allowed by CORS") {
+//     res.status(403).json({message: "CORS policy blocked this request"});
+//   } else {
+//     res.status(422).json({
+//       error: "Unprocessable Entity, check your request data",
+//     });
+//   }
+// }
 
 /**
  * Configuration options for CORS (Cross-Origin Resource Sharing).
@@ -95,14 +94,12 @@ const corsOptions: CorsOptions = {
 };
 
 const app = express();
-// Set trust proxy
-app.set("trust proxy", 1);
 
 // Middleware
 app.use(cors(corsOptions));
 // TODO: Add rate limiter
 app.use(express.json());
-app.use(errorHandler);
+// app.use(errorHandler);
 
 app.use("/v1/decks", deckRoutes);
 app.get("/v1", (req, res) => {
