@@ -130,6 +130,7 @@ export class DeckController {
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
       const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
+
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved decks");
       baseResponse.setData(decks);
@@ -172,7 +173,11 @@ export class DeckController {
       const deckID = req.params.deckID;
       const deck = await this.deckService.getSpecificDeck(deckID);
 
-      res.status(200).json(deck);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Deck was successfully retrieved");
+      baseResponse.setData(deck);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -222,37 +227,64 @@ export class DeckController {
       }
 
       if (typeof deckDescription !== "string") {
-        res.status(400).json({
-          status: 400,
-          message: "INVALID_DECK_DESCRIPTION_TYPE",
-          data: null,
-        });
+        errorResponse.setError("INVALID_DECK_DESCRIPTION_TYPE");
+        errorResponse.setMessage("The description of the deck should be of type string");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       }
 
       if (!deckTitle?.trim()) {
-        res.status(400).json({
-          status: 400,
-          message: "DECK_TITLE_REQUIRED",
-          data: null,
-        });
+        errorResponse.setError("DECK_TITLE_REQUIRED");
+        errorResponse.setMessage("Deck title is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       }
 
       if (!deckDescription?.trim()) {
-        res.status(400).json({
-          status: 400,
-          message: "DECK_DESCRIPTION_REQUIRED",
-          data: null,
-        });
+        errorResponse.setError("DECK_DESCRIPTION_REQUIRED");
+        errorResponse.setMessage("Deck description is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       }
 
       const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto, deckDescription);
 
-      res.status(200).json(deck);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Deck was successfully created");
+      baseResponse.setData(deck);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred while creating deck");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in create deck");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An unknown error occurred during the creation of a deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }
@@ -265,6 +297,8 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async updateDeck(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const {deckTitle, coverPhoto, isDeleted, isPrivate, deckDescription} = req.body;
       const deckID = req.params.deckID;
@@ -273,55 +307,111 @@ export class DeckController {
 
       if (deckTitle !== undefined) {
         if (typeof deckTitle !== "string" || deckTitle.trim() === "") {
-          res.status(400).json({status: 400, message: "INVALID_TITLE", data: null});
+          errorResponse.setError("INVALID_DECK_TITLE");
+          errorResponse.setMessage("The title of the deck should be of type string and not empty or blank");
+
+          baseResponse.setStatus(400);
+          baseResponse.setMessage("An error while updating the deck");
+          baseResponse.setData(errorResponse);
+
+          res.status(400).json(baseResponse);
         }
         updateData.title = deckTitle.trim();
       }
 
       if (deckDescription !== undefined) {
         if (typeof deckDescription !== "string" || deckDescription.trim() === "") {
-          res.status(400).json({status: 400, message: "INVALID_DESCRIPTION", data: null});
+          errorResponse.setError("INVALID_DECK_DESCRIPTION");
+          errorResponse.setMessage("The description of the deck should be of type string and not empty or blank");
+
+          baseResponse.setStatus(400);
+          baseResponse.setMessage("An error while updating the deck");
+          baseResponse.setData(errorResponse);
+
+          res.status(400).json(baseResponse);
         }
         updateData.description = deckDescription.trim();
       }
 
       if (isPrivate !== undefined) {
         if (typeof isPrivate !== "boolean") {
-          res.status(400).json({status: 400, message: "INVALID_PRIVACY_VALUE", data: null});
+          errorResponse.setError("INVALID_PRIVACY_VALUE");
+          errorResponse.setMessage("The is private flag of the deck should be of type boolean and not empty or blank");
+
+          baseResponse.setStatus(400);
+          baseResponse.setMessage("An error while updating the deck");
+          baseResponse.setData(errorResponse);
+
+          res.status(400).json(baseResponse);
         }
         updateData.is_private = isPrivate;
       }
 
       if (isDeleted !== undefined) {
         if (typeof isDeleted !== "boolean") {
-          res.status(400).json({status: 400, message: "INVALID_DELETE_FLAG_VALUE", data: null});
+          errorResponse.setError("INVALID_DELETE_FLAG_VALUE");
+          errorResponse.setMessage("The is delete flag of the deck should be of type boolean and not empty or blank");
+
+          baseResponse.setStatus(400);
+          baseResponse.setMessage("An error while updating the deck");
+          baseResponse.setData(errorResponse);
+
+          res.status(400).json(baseResponse);
         }
         updateData.is_deleted = isDeleted;
       }
 
       if (coverPhoto !== undefined) {
         if (typeof coverPhoto !== "string" || !coverPhoto.startsWith("http")) {
-          res.status(400).json({status: 400, message: "INVALID_COVER_PHOTO_URL", data: null});
+          errorResponse.setError("INVALID_COVER_PHOTO_URL");
+          errorResponse.setMessage("The cover photo url of the deck should be of type string and not empty or blank");
+
+          baseResponse.setStatus(400);
+          baseResponse.setMessage("An error while updating the deck");
+          baseResponse.setData(errorResponse);
+
+          res.status(400).json(baseResponse);
         }
         updateData.cover_photo = coverPhoto;
       }
 
       if (Object.keys(updateData).length === 0) {
-        res.status(400).json({
-          status: 400,
-          message: "NO_VALID_FIELDS_TO_UPDATE",
-          data: null,
-        });
+        errorResponse.setError("NO_VALID_FIELDS_TO_UPDATE");
+        errorResponse.setMessage("There are no valid fields that can be used update the deck");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error while updating the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       }
 
       const deck = await this.deckService.updateDeck(deckID, updateData);
 
-      res.status(200).json(deck);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Deck was successfully updated");
+      baseResponse.setData(deck);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured while updating the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred while updating deck");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in update deck");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An unknown error occurred while updating the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }
@@ -334,15 +424,36 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async deleteDeck(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const deckID = req.params.deckID;
       await this.deckService.deleteDeck(deckID);
-      res.status(200).json({message: `Deck with ID of ${deckID} is successfully deleted`});
+
+      baseResponse.setStatus(200);
+      baseResponse.setMessage(`Deck with ID of ${deckID} is successfully deleted`);
+      baseResponse.setData(null);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured while deleting the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred while updating deck");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in delete deck");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An unknown error occurred while deleting the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }

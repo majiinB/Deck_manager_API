@@ -138,9 +138,13 @@ export class FlashcardController {
         }
       }
 
-      const decks = await this.flashcardService.getRandomFlashcards(deckID, numOfCards);
+      const flashcards = await this.flashcardService.getRandomFlashcards(deckID, numOfCards);
 
-      res.status(200).json(decks);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Random flashcards successfuly retrieved");
+      baseResponse.setData(flashcards);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -180,7 +184,11 @@ export class FlashcardController {
 
       const flashcard = await this.flashcardService.getSpecificFlashcard(deckID, flashcardID);
 
-      res.status(200).json(flashcard);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Flashcard was successfully retrieved");
+      baseResponse.setData(flashcard);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -265,7 +273,11 @@ export class FlashcardController {
 
       const flashcard = await this.flashcardService.createFlashcard(deckID, term, definition);
 
-      res.status(200).json(flashcard);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Flashcard was successfully created");
+      baseResponse.setData(flashcard);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -364,7 +376,7 @@ export class FlashcardController {
 
       if (Object.keys(updateData).length === 0) {
         errorResponse.setError("NO_VALID_FIELDS_TO_UPDATE");
-        errorResponse.setMessage("The flag that indicates if the flashcard is deleted should be of type boolean");
+        errorResponse.setMessage("There are no fields that are valid that can be used to update the flashcard");
 
         baseResponse.setStatus(400);
         baseResponse.setMessage("An error while updating the flashcard");
@@ -373,9 +385,13 @@ export class FlashcardController {
         res.status(400).json(baseResponse);
       }
 
-      const deck = await this.flashcardService.updateFlashcard(deckID, flashcardID, updateData);
+      const flashcard = await this.flashcardService.updateFlashcard(deckID, flashcardID, updateData);
 
-      res.status(200).json(deck);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Flashcard was successfully updated");
+      baseResponse.setData(flashcard);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -413,7 +429,12 @@ export class FlashcardController {
       const deckID = req.params.deckID;
       const flashcardID = req.params.flashcardID;
       await this.flashcardService.deleteFlashcard(deckID, flashcardID);
-      res.status(200).json({message: `Flashcard with ID of ${flashcardID} from deck ${deckID} is successfully deleted`});
+
+      baseResponse.setStatus(200);
+      baseResponse.setMessage(`Flashcard with ID of ${flashcardID} from deck ${deckID} is successfully deleted`);
+      baseResponse.setData(null);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
