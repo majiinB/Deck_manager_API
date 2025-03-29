@@ -66,7 +66,7 @@ export class FlashcardController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const deckID = req.params.deckID;
 
-      if (isNaN(limit) || limit <= 0) {
+      if (isNaN(limit) || limit <= 1) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number.");
 
@@ -80,11 +80,11 @@ export class FlashcardController {
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
 
-      const decks = await this.flashcardService.getFlashcards(deckID, limit, nextPageToken);
+      const flashcard = await this.flashcardService.getFlashcards(deckID, limit, nextPageToken);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved flashcards");
-      baseResponse.setData(decks);
+      baseResponse.setData(flashcard);
 
       res.status(200).json(baseResponse);
     } catch (error) {

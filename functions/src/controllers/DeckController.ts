@@ -17,12 +17,15 @@
  * @module controller
  * @file DeckController.ts
  * @class DeckController
+ * @classdesc Handles deck-related operations for the Deck Manager API.
  * @author Arthur M. Artugue
  * @created 2024-03-27
- * @updated 2025-03-28
+ * @updated 2025-03-29
  */
 import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
+import {BaseResponse} from "../models/BaseResponse";
+import {ErrorResponse} from "../models/ErrorResponse";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -52,23 +55,50 @@ export class DeckController {
   * @return {Promise<void>} A JSON response containing a message indicating the action performed.
   */
   public async getOwnerDecks(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-      if (isNaN(limit) || limit <= 0) {
-        res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+      if (isNaN(limit) || limit <= 1) {
+        errorResponse.setError("INVALID_LIMIT_VALUE");
+        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
         return;
       }
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
       const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
 
-      res.status(200).json(decks);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Successfuly retrieved decks");
+      baseResponse.setData(decks);
+
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred in get owner deck");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in get owner decks");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }
@@ -81,23 +111,49 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async getPublicDecks(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-      if (isNaN(limit) || limit <= 0) {
-        res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+      if (isNaN(limit) || limit <= 1) {
+        errorResponse.setError("INVALID_LIMIT_VALUE");
+        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
         return;
       }
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
       const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Successfuly retrieved decks");
+      baseResponse.setData(decks);
 
-      res.status(200).json(decks);
+      res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred in get public decks");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in get decks");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }
@@ -110,6 +166,8 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async getSpecifiDeck(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const deckID = req.params.deckID;
       const deck = await this.deckService.getSpecificDeck(deckID);
@@ -117,9 +175,23 @@ export class DeckController {
       res.status(200).json(deck);
     } catch (error) {
       if (error instanceof Error) {
-        console.log(error.message);
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of a specific deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       } else {
-        console.log("An unknown error occurred in get specific decks");
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in get specific deck");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An unknown error occurred during the retrieval of a specific deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
       }
     }
   }
@@ -132,16 +204,21 @@ export class DeckController {
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
   public async createDeck(req: Request, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
     try {
       const {deckTitle, deckDescription, coverPhoto} = req.body;
       const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
 
       if (typeof deckTitle !== "string") {
-        res.status(400).json({
-          status: 400,
-          message: "INVALID_DECK_TITLE_TYPE",
-          data: null,
-        });
+        errorResponse.setError("INVALID_DECK_TITLE_TYPE");
+        errorResponse.setMessage("The title of the deck should be of type string");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
       }
 
       if (typeof deckDescription !== "string") {
