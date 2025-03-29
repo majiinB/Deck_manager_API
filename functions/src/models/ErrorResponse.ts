@@ -3,7 +3,7 @@
  *
  * @template T - The type of the data payload included in the response.
  */
-export class ErrorResponse<T> {
+export class ErrorResponse {
   /**
    * Indicates whether the operation was successful.
    */
