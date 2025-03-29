@@ -110,7 +110,7 @@ router.post("/", async (req: Request, res: Response) => {
  */
 router.put("/:deckID", async (req: Request, res: Response) => {
   await deckController.updateDeck(req, res);
-}); // update a deck
+});
 
 /**
  * @route DELETE api/v1/decks/:deckID
@@ -120,7 +120,7 @@ router.put("/:deckID", async (req: Request, res: Response) => {
  */
 router.delete("/:deckID", async (req: Request, res: Response) => {
   await deckController.deleteDeck(req, res);
-}); // delete a deck
+});
 
 // FLASHCARDS ROUTES
 
@@ -134,6 +134,18 @@ router.delete("/:deckID", async (req: Request, res: Response) => {
  */
 router.get("/:deckID/flashcards", async (req: Request, res: Response) => {
   await flashcardController.getFlashcards(req, res);
+});
+
+/**
+ * @route GET api/v1/decks/:deckID/flashcards/random
+ * @description Randomly fetches a certain number of flashcards.
+ * @group Decks - Operations related to flashcard decks
+ * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/:deckID/flashcards/random", async (req: Request, res: Response) => {
+  await flashcardController.getRandomFlashcards(req, res);
 });
 
 /**

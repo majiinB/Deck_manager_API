@@ -1,5 +1,6 @@
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {FlashcardRepository} from "../repositories/FlashcardRepository";
+import {Utils} from "../utils/utils";
 
 /**
  * Service class responsible for handling operations related to flashcards.
@@ -33,6 +34,52 @@ export class FlashcardService {
     try {
       const flashcards = await this.flashcardRepository.getFlashcards(deckID, limit, nextPageToken);
       return flashcards;
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred");
+      }
+    }
+  }
+
+  /**
+   * Retrieves the flashcards of a specific deck.
+   * @param {string} deckID - The deck's UID.
+   * @param {number | null} numOfCards - The number of flashcards to be selected.
+   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   */
+  public async getRandomFlashcards(deckID: string, numOfCards: number | null): Promise<object | void> {
+    try {
+      const flashcardsData = await this.flashcardRepository.getAllFlashcards(deckID) as {flashcards: object[]}; // Cast to expected type
+
+      // Ensure that flashcardsData is actually an object and has the flashcards property.
+      if (!flashcardsData || !flashcardsData.flashcards || !Array.isArray(flashcardsData.flashcards)) {
+        return {error: "No flashcards found for this deck."}; // Edge case 5:  No flashcards or invalid format
+      }
+      const flashcards = flashcardsData.flashcards;
+
+      if (flashcards.length < 5) {
+        return {error: "Not enough flashcards to randomize and select."}; // Edge case 7
+      }
+
+      // 2. Fischer-Yates Shuffle
+      const shuffledFlashcards = Utils.fischerYatesShuffle(flashcards);
+
+      // 3. Determine number of cards to return
+      let numToReturn = numOfCards;
+
+      if (numToReturn === null || numToReturn === undefined) {
+        // 4. Edge case: No numOfCards provided
+        numToReturn = Math.ceil(shuffledFlashcards.length * 0.5); // Default to 50%
+      }
+
+      if (numToReturn > shuffledFlashcards.length) {
+        return {error: "Requested number of flashcards exceeds available cards."}; // Edge case 6
+      }
+
+      const selectedFlashcards = shuffledFlashcards.slice(0, numToReturn);
+      return {flashcards: selectedFlashcards}; // consistent return format
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);

@@ -55,6 +55,38 @@ export class FlashcardController {
   }
 
   /**
+  *
+  * Handles the request to fetch all flashcards and then randomize it before selecting and returning.
+  *
+  * @param {Request} req - The HTTP request object.
+  * @param {Response} res - The HTTP response object.
+  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
+  */
+  public async getRandomFlashcards(req: Request, res: Response): Promise<void> {
+    try {
+      const numOfCards = req.query.numOfCards ? parseInt(req.query.limit as string, 10) : null;
+      const deckID = req.params.deckID;
+
+      if (numOfCards !== null) {
+        if (isNaN(numOfCards) || numOfCards <= 0) {
+          res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+          return;
+        }
+      }
+
+      const decks = await this.flashcardService.getRandomFlashcards(deckID, numOfCards);
+
+      res.status(200).json(decks);
+    } catch (error) {
+      if (error instanceof Error) {
+        console.log(error.message);
+      } else {
+        console.log("An unknown error occurred in get flashcard");
+      }
+    }
+  }
+
+  /**
   * Handles the request to fetch a specific flashcard
   *
   * @param {Request} req - The HTTP request object.

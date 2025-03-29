@@ -1,4 +1,3 @@
-
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 
 /**

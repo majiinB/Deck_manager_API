@@ -1,23 +1,18 @@
 /**
- * Deck manager API
+ * Deck Manager API
  *
  * @file index.ts
- * @description This is the main entry point for the Deck API. It sets up the
+ * @description This is the main entry point for the Deck Manager API. It sets up the
  * Express application.
  *
  * Routes:
  * - /: Handles requests that checks if the server or API is up.
+ * - /decks: Handles requests tha manages deck resources and it subcollection flashcards.
  *
  * Middleware:
  * - express.json(): Parses incoming request bodies in JSON format.
- * - errorHandler: Custom error handler middleware to log errors and return a
- *   422 Unprocessable Entity response.
  * - CORS policy: (Cross origin resource sharing) checks if the request came
  *   from a valid source.
- * - limiter: Controls the rate of request from a user (through IP).
- *
- * Functions:
- * - errorHandler: Middleware function for error handling.
  *
  * Server:
  * - Listens on port 5001.
@@ -27,37 +22,13 @@
  *
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-03-27
+ * @updated 2025-03-28
  */
 import * as functions from "firebase-functions";
 import express from "express";
 import cors, {CorsOptions} from "cors";
 
 import deckRoutes from "./routes/Routes";
-
-/**
- * Error handler middleware.
- * Logs the error stack trace for debugging and returns appropriate HTTP responses.
- *
- * @param {Error} err - The error object.
- * @param {express.Request} req - The Express request object.
- * @param {express.Response} res - The Express response object.
- * @param {express.NextFunction} _next - The next middleware function.
- * @return {void}
- */
-// function errorHandler(
-//   err: Error,
-//   req: express.Request,
-//   res: express.Response,
-// ): void {
-//   if (err.message === "Not allowed by CORS") {
-//     res.status(403).json({message: "CORS policy blocked this request"});
-//   } else {
-//     res.status(422).json({
-//       error: "Unprocessable Entity, check your request data",
-//     });
-//   }
-// }
 
 /**
  * Configuration options for CORS (Cross-Origin Resource Sharing).
@@ -100,7 +71,6 @@ app.use(cors(corsOptions));
 // TODO: Add rate limiter
 app.use(express.json());
 // app.use(errorHandler);
-
 app.use("/v1/decks", deckRoutes);
 app.get("/v1", (req, res) => {
   res.json({

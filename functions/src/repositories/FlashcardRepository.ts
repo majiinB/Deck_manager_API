@@ -64,6 +64,48 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
+   * Retrieves a list of decks owned by a certain user with pagination support.
+   * @param {string} deckID - The deck's UID.
+   * @param {string} [nextPageToken=null] - The token for the next page of results.
+   * @return {Promise<any[]>} A promise that resolves to an array of decks.
+   */
+  public async getAllFlashcards(deckID: string): Promise<object> {
+    try {
+      const db = this.getDb();
+      const deckRef = db.collection("decks").doc(deckID);
+      const deckSnap = await deckRef.get();
+
+      if (!deckSnap.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      const query = deckRef
+        .collection("flashcards")
+        .where("is_deleted", "==", false)
+        .orderBy("created_at");
+
+      const snapshot = await query.get();
+
+      // Extract deck data
+      const flashcards = snapshot.docs.map((doc)=> ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      return {
+        flashcards,
+      };
+    } catch (error) {
+      console.error("Error fetching all decks:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message);
+      } else {
+        throw new Error("GET_DECK_UNKNOWN_ERROR");
+      }
+    }
+  }
+
+  /**
    * Retrieves a specific deck owned by a certain user.
    * @async
    * @param {string} deckID - The deck's UID.
