@@ -36,7 +36,9 @@ export class FlashcardController {
       const deckID = req.params.deckID;
 
       if (isNaN(limit) || limit <= 0) {
-        res.status(400).json({error: "Invalid limit value. It must be a positive number."});
+        res.status(400).json({
+          error: "Invalid limit value. It must be a positive number.",
+        });
         return;
       }
 
