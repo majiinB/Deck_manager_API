@@ -1,4 +1,30 @@
 
+
+/**
+ * Deck Manager API - Flashcard Controller
+ *
+ * @file FlashcardController.ts
+ * This module defines the controller for managing flashcards in the Deck Manager API.
+ * It provides methods for CRUD operations on flashcards, including retrieval, creation,
+ * updating, and deletion of flashcards within a specific deck.
+ *
+ * Endpoints Handled:
+ * - GET api/v1/decks/:deckID/flashcards: Retrieves all flashcards from a specific deck.
+ * - GET api/v1/decks/:deckID/flashcards/random: Retrieves a randomized selection of flashcards from a specific deck.
+ * - GET api/v1/decks/:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
+ * - POST api/v1/decks/:deckID/flashcards: Adds a new flashcard to a specific deck.
+ * - PUT api/v1/decks/:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
+ * - DELETE api/v1/decks/:deckID/flashcards/:flashcardID: Deletes a specific flashcard by its ID.
+ *
+ * @module FlashcardController
+ * @file FlashcardController.ts
+ * @class FlashcardController
+ * @classdesc Handles flashcard-related operations for the Deck Manager API.
+ * @author Arthur M. Artugue
+ * @created 2024-03-27
+ * @updated 2025-03-29
+ */
+
 import {Request, Response} from "express";
 import {FlashcardService} from "../services/FlashCardService";
 import {BaseResponse} from "../models/BaseResponse";
