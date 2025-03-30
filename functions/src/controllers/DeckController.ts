@@ -38,6 +38,8 @@ export class DeckController {
    */
   private deckService: DeckService;
 
+  private firebaseStoragePattern: RegExp;
+
   /**
    * Initializes the DeckService with a DeckService instance.
    *
@@ -45,6 +47,7 @@ export class DeckController {
    */
   constructor(deckService: DeckService) {
     this.deckService = deckService;
+    this.firebaseStoragePattern = new RegExp("^https://firebasestorage\\.googleapis\\.com/v0/b/deck-f429c\\.appspot\\.com/o/deckCovers%2F[\\w-]+%2F[\\w-]+\\.(png|jpg|jpeg|webp)\\?alt=media&token=[\\w-]+$");
   }
 
   /**
@@ -129,7 +132,7 @@ export class DeckController {
       }
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
-      const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
+      const decks = await this.deckService.getPublicDecks(limit, nextPageToken);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved decks");
@@ -215,6 +218,18 @@ export class DeckController {
       const {deckTitle, deckDescription, coverPhoto} = req.body;
       const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
 
+      // Deck title validation
+      if (!deckTitle) {
+        errorResponse.setError("DECK_TITLE_REQUIRED");
+        errorResponse.setMessage("Deck title is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
       if (typeof deckTitle !== "string") {
         errorResponse.setError("INVALID_DECK_TITLE_TYPE");
         errorResponse.setMessage("The title of the deck should be of type string");
@@ -224,8 +239,32 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
+      }
+      if (!deckTitle.trim()) {
+        errorResponse.setError("DECK_TITLE_REQUIRED");
+        errorResponse.setMessage("Deck title is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
       }
 
+      // Deck Description Validation
+      if (!deckDescription) {
+        errorResponse.setError("DECK_DESCRIPTION_REQUIRED");
+        errorResponse.setMessage("Deck description is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
       if (typeof deckDescription !== "string") {
         errorResponse.setError("INVALID_DECK_DESCRIPTION_TYPE");
         errorResponse.setMessage("The description of the deck should be of type string");
@@ -235,19 +274,8 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       }
-
-      if (!deckTitle?.trim()) {
-        errorResponse.setError("DECK_TITLE_REQUIRED");
-        errorResponse.setMessage("Deck title is a required field");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-      }
-
       if (!deckDescription?.trim()) {
         errorResponse.setError("DECK_DESCRIPTION_REQUIRED");
         errorResponse.setMessage("Deck description is a required field");
@@ -257,6 +285,31 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
+      }
+
+      // Cover photo validation
+      if (typeof coverPhoto !== "string") {
+        errorResponse.setError("INVALID_DECK_COVERPHOTO_TYPE");
+        errorResponse.setMessage("The description of the deck should be of type string");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the creation of the flashcard");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
+      if (!this.firebaseStoragePattern.test(coverPhoto)) {
+        errorResponse.setError("INVALID_DECK_COVERPHOTO_URL");
+        errorResponse.setMessage("The cover photo URL is invalid. It must be a valid Firebase Storage URL for deck covers.");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occurred during the creation of the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
       }
 
       const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto, deckDescription);
@@ -266,6 +319,7 @@ export class DeckController {
       baseResponse.setData(deck);
 
       res.status(200).json(baseResponse);
+      return;
     } catch (error) {
       if (error instanceof Error) {
         errorResponse.setError(error.name);
@@ -276,6 +330,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in create deck");
@@ -285,6 +340,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }

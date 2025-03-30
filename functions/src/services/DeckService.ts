@@ -50,15 +50,17 @@ export class DeckService {
    * @param {string | null} nextPageToken - The token for the next page of results, or null for the first page.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async getPublicDeck(limit: number, nextPageToken: string | null): Promise<object | void> {
+  public async getPublicDecks(limit: number, nextPageToken: string | null): Promise<object | void> {
     try {
       const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
       return decks;
     } catch (error) {
       if (error instanceof Error) {
         console.log(error.message);
+        throw new Error(error.message);
       } else {
         console.log("An unknown error occurred");
+        throw new Error("An unknown error occurred");
       }
     }
   }

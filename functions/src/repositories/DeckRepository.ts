@@ -170,7 +170,7 @@ export class DeckRepository extends FirebaseAdmin {
       const res = await db.collection("decks").add(deckData);
 
       return {
-        deck_id: res.id,
+        id: res.id,
         fields: deckData,
       };
     } catch (error) {
