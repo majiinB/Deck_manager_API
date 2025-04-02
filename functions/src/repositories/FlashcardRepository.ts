@@ -208,7 +208,7 @@ export class FlashcardRepository extends FirebaseAdmin {
   * Updates a deck document in Firestore with the provided data.
   *
   * @async
-  * @function updateDeck
+  * @function updateFlashcard
   * @param {string} userID - The ID of the one who owns the deck.
   * @param {string} deckId - The unique identifier of the deck to update.
   * @param {string} flashcardID - The UID of the specific flashcard.
@@ -249,11 +249,29 @@ export class FlashcardRepository extends FirebaseAdmin {
         throw new Error("UNAUTHORIZED_USER");
       }
 
-      const flashcardRef = deckRef
-        .collection("flashcards")
-        .doc(flashcardID);
+      const flashcardRef = deckRef.collection("flashcards").doc(flashcardID);
+      const flashcardSnap = await flashcardRef.get();
 
+      if (!flashcardSnap.exists) {
+        throw new Error("FLASHCARD_NOT_FOUND");
+      }
+
+      const previousData = flashcardSnap.data();
+
+      // Update the flashcard
       await flashcardRef.update(data);
+
+      // Adjust flashcard_count if is_deleted is updated
+      if (Object.prototype.hasOwnProperty.call(data, "is_deleted")) {
+        const isDeletedNow = (data as { is_deleted?: boolean }).is_deleted;
+        const wasDeletedBefore = previousData?.is_deleted ?? false;
+
+        if (isDeletedNow === true && wasDeletedBefore === false) {
+          await deckRef.update({flashcard_count: deck.data()?.flashcard_count - 1});
+        } else if (isDeletedNow === false && wasDeletedBefore === true) {
+          await deckRef.update({flashcard_count: deck.data()?.flashcard_count + 1});
+        }
+      }
 
       const updatedFlashcard = await flashcardRef.get();
 
@@ -275,6 +293,7 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
     }
   }
+
 
   /**
  * Deletes multiple flashcards in the Firestore database and updates the flashcard count.
