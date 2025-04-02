@@ -29,6 +29,7 @@ import {Request, Response} from "express";
 import {FlashcardService} from "../services/FlashCardService";
 import {BaseResponse} from "../models/BaseResponse";
 import {ErrorResponse} from "../models/ErrorResponse";
+import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 
 /**
  * Class responsible for initializing and managing the services related to flashcards
@@ -219,13 +220,13 @@ export class FlashcardController {
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async createFlashcard(req: Request, res: Response): Promise<void> {
+  public async createFlashcard(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const {term, definition} = req.body;
       const deckID = req.params.deckID;
-      // const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
+      const userID = req.user?.user_id;
 
       // Flashcard term validation
       if (!term) {
@@ -297,7 +298,7 @@ export class FlashcardController {
         return;
       }
 
-      const flashcard = await this.flashcardService.createFlashcard(deckID, term, definition);
+      const flashcard = await this.flashcardService.createFlashcard(userID, deckID, term, definition);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Flashcard was successfully created");
@@ -333,17 +334,18 @@ export class FlashcardController {
   /**
   * Handles the request to update a specific flashcard
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async updateFlashcard(req: Request, res: Response): Promise<void> {
+  public async updateFlashcard(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const {term, definition, isDeleted, isStarred} = req.body;
       const deckID = req.params.deckID;
       const flashcardID = req.params.flashcardID;
+      const userID = req.user?.user_id;
 
       const updateData: Partial<{ term: string; definition:string; is_deleted: boolean; is_starred: boolean;}> = {};
 
@@ -414,7 +416,7 @@ export class FlashcardController {
         res.status(400).json(baseResponse);
       }
 
-      const flashcard = await this.flashcardService.updateFlashcard(deckID, flashcardID, updateData);
+      const flashcard = await this.flashcardService.updateFlashcard(userID, deckID, flashcardID, updateData);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Flashcard was successfully updated");
@@ -447,17 +449,18 @@ export class FlashcardController {
   /**
   * Handles the request to delete a specific flashcard
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async deleteFlashcard(req: Request, res: Response): Promise<void> {
+  public async deleteFlashcard(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
+    const userID = req.user?.user_id;
     try {
       const deckID = req.params.deckID;
       const flashcardID = req.params.flashcardID;
-      await this.flashcardService.deleteFlashcard(deckID, flashcardID);
+      await this.flashcardService.deleteFlashcard(userID, deckID, flashcardID);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage(`Flashcard with ID of ${flashcardID} from deck ${deckID} is successfully deleted`);

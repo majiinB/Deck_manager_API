@@ -109,13 +109,14 @@ export class FlashcardService {
   }
 
   /**
-  * Creates a deck entity
+  * Creates a flashcard entity
+  * @param {string} userID - The ID of the one who owns the deck.
   * @param {string} deckID - The title of the created deck.
   * @param {string} term - The ID of the one who owns and requested for the creation of deck.
   * @param {string} definition - The cover photo url of the uploaded jpeg.
   * @return {Promise<object>} A promise resolving to the owner's deck data.
   */
-  public async createFlashcard(deckID:string, term: string, definition: string): Promise<object> {
+  public async createFlashcard(userID: string, deckID:string, term: string, definition: string): Promise<object> {
     try {
       const flashcard = {
         term: term,
@@ -125,7 +126,7 @@ export class FlashcardService {
         created_at: FirebaseAdmin.getTimeStamp(),
       };
 
-      const newFlashcard = await this.flashcardRepository.createFlashcard(deckID, flashcard);
+      const newFlashcard = await this.flashcardRepository.createFlashcard(userID, deckID, flashcard);
       return newFlashcard;
     } catch (error) {
       console.error("Error creating flashcard:", error);
@@ -135,14 +136,15 @@ export class FlashcardService {
 
   /**
    * Updates a specific flashcard.
+   * @param {string} userID - The ID of the one who owns the deck.
    * @param {string} deckID - The UID of the deck to be updated.
    * @param {string} flashcardID - The UID of the specific flashcard.
    * @param {object} updateData - The title of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async updateFlashcard(deckID: string, flashcardID: string, updateData: object): Promise<object> {
+  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, updateData: object): Promise<object> {
     try {
-      const updatedFlashcard = await this.flashcardRepository.updateFlashcard(deckID, flashcardID, updateData);
+      const updatedFlashcard = await this.flashcardRepository.updateFlashcard(userID, deckID, flashcardID, updateData);
       return updatedFlashcard;
     } catch (error) {
       console.error("Error updating flashcard:", error);
@@ -152,13 +154,14 @@ export class FlashcardService {
 
   /**
    * Deletes (HARD) a specific flashcard.
+   * @param {string} userID - The ID of the one who owns the deck.
    * @param {string} deckID - The UID of the deck to be delete.
    * @param {string} flashcardID - The UID of the flashcard to be deleted.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async deleteFlashcard(deckID: string, flashcardID: string): Promise<void> {
+  public async deleteFlashcard(userID: string, deckID: string, flashcardID: string): Promise<void> {
     try {
-      await this.flashcardRepository.deleteFlashcard(deckID, flashcardID);
+      await this.flashcardRepository.deleteFlashcard(userID, deckID, flashcardID);
     } catch (error) {
       console.error("Error deleting deck:", error);
       throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");

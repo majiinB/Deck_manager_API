@@ -8,7 +8,7 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
  */
 export class FlashcardRepository extends FirebaseAdmin {
   /**
-   * Retrieves a list of decks owned by a certain user with pagination support.
+   * Retrieves a list of flashcards owned by a certain user with pagination support.
    * @param {string} deckID - The deck's UID.
    * @param {number} limit - The maximum number of decks to retrieve.
    * @param {string} [nextPageToken=null] - The token for the next page of results.
@@ -64,9 +64,8 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a list of decks owned by a certain user with pagination support.
+   * Retrieves a all flashcards.
    * @param {string} deckID - The deck's UID.
-   * @param {string} [nextPageToken=null] - The token for the next page of results.
    * @return {Promise<any[]>} A promise that resolves to an array of decks.
    */
   public async getAllFlashcards(deckID: string): Promise<object> {
@@ -153,12 +152,13 @@ export class FlashcardRepository extends FirebaseAdmin {
   *
   * @async
   * @function createFlashcard
+  * @param {string} [userID] - The ID of the one who owns the deck.
   * @param {string} deckID - The deck's UID.
   * @param {Object} flashcardData - The data for the new flashcard.
   * @return {Promise<object>} The unique ID of the newly created deck.
   * @throws {Error} If the input data is invalid or Firestore operation fails.
   */
-  public async createFlashcard(deckID: string, flashcardData: object): Promise<object> {
+  public async createFlashcard(userID: string, deckID: string, flashcardData: object): Promise<object> {
     try {
       // Validate input
       if (!flashcardData || typeof flashcardData !== "object") {
@@ -172,6 +172,14 @@ export class FlashcardRepository extends FirebaseAdmin {
 
       if (!deck.exists) {
         throw new Error("DECK_NOT_FOUND");
+      }
+
+      if (deck.data()?.is_deleted) {
+        throw new Error("DECK_DELETED");
+      }
+
+      if (deck.data()?.owner_id !== userID) {
+        throw new Error("UNAUTHORIZED_USER");
       }
 
       const flashcard = await query.collection("flashcards").add(flashcardData);
@@ -194,13 +202,14 @@ export class FlashcardRepository extends FirebaseAdmin {
   *
   * @async
   * @function updateDeck
+  * @param {string} userID - The ID of the one who owns the deck.
   * @param {string} deckId - The unique identifier of the deck to update.
   * @param {string} flashcardID - The UID of the specific flashcard.
   * @param {Object} data - The key-value pairs representing the fields to update.
   * @return {Promise<object>} - Resolves if the update is successful.
   * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
   */
-  public async updateFlashcard(deckId: string, flashcardID: string, data: object): Promise<object> {
+  public async updateFlashcard(userID: string, deckId: string, flashcardID: string, data: object): Promise<object> {
     try {
       // Validate inputs
       if (!deckId || typeof deckId !== "string") {
@@ -222,6 +231,15 @@ export class FlashcardRepository extends FirebaseAdmin {
 
       if (!deck.exists) {
         throw new Error("DECK_NOT_FOUND");
+      }
+
+      if (deck.data()?.is_deleted) {
+        throw new Error("DECK_DELETED");
+      }
+
+      if (deck.data()?.owner_id !== userID) {
+        // TODO: check if the user id has a role of moderator
+        throw new Error("UNAUTHORIZED_USER");
       }
 
       const flashcardRef = deckRef
@@ -256,12 +274,13 @@ export class FlashcardRepository extends FirebaseAdmin {
   *
   * @async
   * @function deleteFlashcard
+  * @param {string} [userID] - The ID of the one who owns the deck.
   * @param {string} deckID - The UID of the deck to be deleted.
   * @param {string} flashcardID - The UID of the specific flashcard.
   * @return {Promise<void>} The unique ID of the newly created deck.
   * @throws {Error} If the input data is invalid or Firestore operation fails.
   */
-  public async deleteFlashcard(deckID: string, flashcardID: string): Promise<void> {
+  public async deleteFlashcard(userID: string, deckID: string, flashcardID: string): Promise<void> {
     try {
       // Validate input
       if (!deckID || typeof deckID !== "string") {
@@ -276,8 +295,13 @@ export class FlashcardRepository extends FirebaseAdmin {
 
       // Check if deck exists before deleting
       const deckSnapshot = await deckRef.get();
+
       if (!deckSnapshot.exists) {
         throw new Error("DECK_NOT_FOUND");
+      }
+
+      if (deckSnapshot.data()?.owner_id !== userID) {
+        throw new Error("UNAUTHORIZED_USER");
       }
 
       const flashcardRef = deckRef
