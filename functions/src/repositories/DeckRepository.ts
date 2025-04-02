@@ -9,16 +9,17 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
 export class DeckRepository extends FirebaseAdmin {
   /**
    * Retrieves a list of decks owned by a certain user with pagination support.
+   * @param {string} [userID] - The ID of the one who owns the deck.
    * @param {number} limit - The maximum number of decks to retrieve.
    * @param {string} [nextPageToken=null] - The token for the next page of results.
    * @return {Promise<any[]>} A promise that resolves to an array of decks.
    */
-  public async getOwnerDecks(limit: number, nextPageToken: string | null = null): Promise<object> {
+  public async getOwnerDecks(userID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
     try {
       const db = this.getDb();
       let query = db
         .collection("decks")
-        .where("owner_id", "==", "Y3o8pxyMZre0wOqHh6Ip98ckBmO2") // Filter by owner_id
+        .where("owner_id", "==", userID) // Filter by owner_id
         .where("is_deleted", "==", false) // Filter out deleted decks
         .orderBy("title") // Order results
         .limit(limit); // Limit results

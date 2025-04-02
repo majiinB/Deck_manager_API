@@ -25,14 +25,14 @@ export class DeckService {
 
   /**
    * Retrieves the deck owned by the current user.
-   *
+   * @param {string} [userID] - The ID of the one who owns the deck.
    * @param {number} limit - The maximum number of decks to retrieve.
    * @param {string | null} nextPageToken - The token for the next page of results, or null for the first page.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async getOwnerDeck(limit: number, nextPageToken: string | null): Promise<object | void> {
+  public async getOwnerDeck(userID: string, limit: number, nextPageToken: string | null): Promise<object | void> {
     try {
-      const decks = await this.deckRepository.getOwnerDecks(limit, nextPageToken);
+      const decks = await this.deckRepository.getOwnerDecks(userID, limit, nextPageToken);
       return decks;
     } catch (error) {
       if (error instanceof Error) {

@@ -26,6 +26,7 @@ import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
 import {BaseResponse} from "../models/BaseResponse";
 import {ErrorResponse} from "../models/ErrorResponse";
+import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -38,6 +39,10 @@ export class DeckController {
    */
   private deckService: DeckService;
 
+  /**
+   * Regular expression pattern to validate Firebase Storage URLs for deck covers.
+   * The pattern checks for URLs that match the Firebase Storage format and include
+   */
   private firebaseStoragePattern: RegExp;
 
   /**
@@ -57,11 +62,24 @@ export class DeckController {
   * @param {Response} res - The HTTP response object.
   * @return {Promise<void>} A JSON response containing a message indicating the action performed.
   */
-  public async getOwnerDecks(req: Request, res: Response): Promise<void> {
+  public async getOwnerDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const userID = req.user?.user_id;
+
+      if (!userID) {
+        errorResponse.setError("USER_ID_REQUIRED");
+        errorResponse.setMessage("User ID is a required field");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
 
       if (isNaN(limit) || limit <= 1) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
@@ -76,7 +94,7 @@ export class DeckController {
       }
 
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
-      const decks = await this.deckService.getOwnerDeck(limit, nextPageToken);
+      const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved decks");

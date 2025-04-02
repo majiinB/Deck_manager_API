@@ -27,10 +27,9 @@
 import * as functions from "firebase-functions";
 import express from "express";
 import cors, {CorsOptions} from "cors";
-import {AuthenticationService} from "./services/AuthenticationService";
-
 import deckRoutes from "./routes/Routes";
 import {AuthenticatedRequest} from "./interface/AuthenticatedRequest";
+import {BaseResponse} from "./models/BaseResponse";
 
 /**
  * Configuration options for CORS (Cross-Origin Resource Sharing).
@@ -67,7 +66,7 @@ const corsOptions: CorsOptions = {
 };
 
 const app = express();
-const authService = new AuthenticationService();
+const baseResponse = new BaseResponse();
 
 // Middleware
 app.use(cors(corsOptions));
@@ -75,11 +74,12 @@ app.use(cors(corsOptions));
 app.use(express.json());
 // app.use(errorHandler);
 app.use("/v1/decks", deckRoutes);
-app.get("/v1", authService.verifyFirebaseToken.bind(authService), (req: AuthenticatedRequest, res) => {
-  res.json({
-    message: "Deck Manager API is running",
-    data: req.user,
-  });
+app.get("/v1", (req: AuthenticatedRequest, res) => {
+  baseResponse.setStatus(200);
+  baseResponse.setMessage("Deck Manager API is running");
+  baseResponse.setData(null);
+
+  res.status(200).json(baseResponse);
 });
 
 // eslint-disable-next-line camelcase
