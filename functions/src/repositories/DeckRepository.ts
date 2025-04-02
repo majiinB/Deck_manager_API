@@ -251,43 +251,49 @@ export class DeckRepository extends FirebaseAdmin {
   * @async
   * @function deleteDeck
   * @param {string} [userID] - The ID of the one who owns the deck.
-  * @param {string} deckID - The UID of the deck to be deleted.
+  * @param {string[]} deckIDs - The UID of the decks to be deleted.
   * @return {Promise<void>} The unique ID of the newly created deck.
   * @throws {Error} If the input data is invalid or Firestore operation fails.
   */
-  public async deleteDeck(userID: string, deckID: string): Promise<void> {
+  public async deleteDecks(userID: string, deckIDs: string[]): Promise<void> {
     try {
       // Validate input
-      if (!deckID || typeof deckID !== "string") {
-        throw new Error("INVALID_DECK_ID");
+      if (!Array.isArray(deckIDs) || deckIDs.length === 0) {
+        throw new Error("INVALID_DECK_IDS");
       }
 
       const db = this.getDb();
-      const deckRef = db.collection("decks").doc(deckID);
 
-      // Check if deck exists before deleting
-      const deckSnapshot = await deckRef.get();
-      if (!deckSnapshot.exists) {
-        throw new Error("DECK_NOT_FOUND");
+      for (const deckID of deckIDs) {
+        if (typeof deckID !== "string" || !deckID) {
+          console.warn(`Skipping invalid deck ID: ${deckID}`);
+          continue;
+        }
+
+        const deckRef = db.collection("decks").doc(deckID);
+        const deckSnapshot = await deckRef.get();
+
+        if (!deckSnapshot.exists) {
+          console.warn(`Deck not found: ${deckID}`);
+          continue;
+        }
+
+        const deckOwner = deckSnapshot.data()?.owner_id;
+        if (deckOwner !== userID) {
+          console.warn(`User not authorized to delete deck: ${deckID}`);
+          continue;
+        }
+
+        // TODO: Check if the user role is admin
+        await deckRef.delete();
+        console.log(`Deck with ID ${deckID} has been deleted.`);
       }
-
-      const deckOwner = deckSnapshot.data()?.owner_id;
-
-      if (deckOwner !== userID) {
-        throw new Error("NOT_AUTHORIZED_TO_DELETE_DECK");
-      }
-
-      // TODO: Check if the user role is admin
-
-      // Permanently delete the deck
-      await deckRef.delete();
-      console.log(`Deck with ID ${deckID} has been deleted.`);
     } catch (error) {
-      console.error("Error deleting deck:", error);
+      console.error("Error deleting decks:", error);
       if (error instanceof Error) {
         throw new Error(error.message);
       } else {
-        throw new Error("DELETE_DECK_UNKNOWN_ERROR");
+        throw new Error("DELETE_DECKS_UNKNOWN_ERROR");
       }
     }
   }

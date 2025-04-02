@@ -491,11 +491,11 @@ export class DeckController {
     const errorResponse = new ErrorResponse();
     const userID = req.user?.user_id;
     try {
-      const deckID = req.params.deckID;
-      await this.deckService.deleteDeck(userID, deckID);
+      const deckIDs = req.body.deckIDs;
+      await this.deckService.deleteDeck(userID, deckIDs);
 
       baseResponse.setStatus(200);
-      baseResponse.setMessage(`Deck with ID of ${deckID} is successfully deleted`);
+      baseResponse.setMessage(`Deck with ID of ${deckIDs} is successfully deleted`);
       baseResponse.setData(null);
 
       res.status(200).json(baseResponse);

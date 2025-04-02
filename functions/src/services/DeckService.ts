@@ -132,12 +132,12 @@ export class DeckService {
   /**
    * Deletes (HARD) a specific deck.
    * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
-   * @param {string} deckID - The UID of the deck to be delete.
+   * @param {string[]} deckIDs - The UID of the deck to be delete.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async deleteDeck(userID: string, deckID: string): Promise<void> {
+  public async deleteDeck(userID: string, deckIDs: string[]): Promise<void> {
     try {
-      await this.deckRepository.deleteDeck(userID, deckID);
+      await this.deckRepository.deleteDecks(userID, deckIDs);
     } catch (error) {
       console.error("Error deleting deck:", error);
       throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");

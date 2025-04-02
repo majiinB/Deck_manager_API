@@ -118,7 +118,7 @@ router.put("/:deckID", async (req: Request, res: Response) => {
  * @param {string} deckID - The unique identifier of the deck to delete (from URL params).
  * @returns {object} JSON response with a success message or an error.
  */
-router.delete("/:deckID", async (req: Request, res: Response) => {
+router.post("/delete", async (req: Request, res: Response) => {
   await deckController.deleteDeck(req, res);
 });
 
