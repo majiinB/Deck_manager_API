@@ -58,7 +58,7 @@ export class DeckController {
   /**
   * Handles the request to fetch all decks that an owner owns.
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<void>} A JSON response containing a message indicating the action performed.
   */
@@ -225,16 +225,16 @@ export class DeckController {
   /**
   * Handles the request to create a deck
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async createDeck(req: Request, res: Response): Promise<void> {
+  public async createDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const {deckTitle, deckDescription, coverPhoto} = req.body;
-      const userID = "Y3o8pxyMZre0wOqHh6Ip98ckBmO2"; // TODO: Extract this info from jwt token
+      const userID = req.user?.user_id;
 
       // Deck title validation
       if (!deckTitle) {
@@ -366,16 +366,17 @@ export class DeckController {
   /**
   * Handles the request to update a specific deck
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async updateDeck(req: Request, res: Response): Promise<void> {
+  public async updateDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const {deckTitle, coverPhoto, isDeleted, isPrivate, deckDescription} = req.body;
       const deckID = req.params.deckID;
+      const userID = req.user?.user_id;
 
       const updateData: Partial<{ title: string; is_private: boolean; cover_photo: string; is_deleted: boolean; description: string}> = {};
 
@@ -460,7 +461,7 @@ export class DeckController {
         res.status(400).json(baseResponse);
       }
 
-      const deck = await this.deckService.updateDeck(deckID, updateData);
+      const deck = await this.deckService.updateDeck(userID, deckID, updateData);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Deck was successfully updated");
@@ -493,16 +494,17 @@ export class DeckController {
   /**
   * Handles the request to delete a specific deck
   *
-  * @param {Request} req - The HTTP request object.
+  * @param {AuthenticatedRequest} req - The HTTP request object.
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async deleteDeck(req: Request, res: Response): Promise<void> {
+  public async deleteDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
+    const userID = req.user?.user_id;
     try {
       const deckID = req.params.deckID;
-      await this.deckService.deleteDeck(deckID);
+      await this.deckService.deleteDeck(userID, deckID);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage(`Deck with ID of ${deckID} is successfully deleted`);

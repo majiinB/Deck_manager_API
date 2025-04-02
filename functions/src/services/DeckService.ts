@@ -114,13 +114,14 @@ export class DeckService {
 
   /**
    * Updates a specific deck.
+   * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
    * @param {string} deckID - The UID of the deck to be updated.
    * @param {object} updateData - The title of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async updateDeck(deckID: string, updateData: object): Promise<object> {
+  public async updateDeck(userID: string, deckID: string, updateData: object): Promise<object> {
     try {
-      const updatedDeck = await this.deckRepository.updateDeck(deckID, updateData);
+      const updatedDeck = await this.deckRepository.updateDeck(userID, deckID, updateData);
       return updatedDeck;
     } catch (error) {
       console.error("Error creating deck:", error);
@@ -129,12 +130,13 @@ export class DeckService {
   }
   /**
    * Deletes (HARD) a specific deck.
+   * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
    * @param {string} deckID - The UID of the deck to be delete.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async deleteDeck(deckID: string): Promise<void> {
+  public async deleteDeck(userID: string, deckID: string): Promise<void> {
     try {
-      await this.deckRepository.deleteDeck(deckID);
+      await this.deckRepository.deleteDeck(userID, deckID);
     } catch (error) {
       console.error("Error deleting deck:", error);
       throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");

@@ -189,12 +189,13 @@ export class DeckRepository extends FirebaseAdmin {
   *
   * @async
   * @function updateDeck
+  * @param {string} [userID] - The ID of the one who owns the deck.
   * @param {string} deckId - The unique identifier of the deck to update.
   * @param {Object} data - The key-value pairs representing the fields to update.
   * @return {Promise<object>} - Resolves if the update is successful.
   * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
   */
-  public async updateDeck(deckId: string, data: object): Promise<object> {
+  public async updateDeck(userID: string, deckId: string, data: object): Promise<object> {
     try {
       // Validate inputs
       if (!deckId || typeof deckId !== "string") {
@@ -206,6 +207,22 @@ export class DeckRepository extends FirebaseAdmin {
       const db = this.getDb();
 
       const deckRef = db.collection("decks").doc(deckId);
+      const deckData = await deckRef.get();
+
+      if (!deckData.exists) {
+        throw new Error("DECK_NOT_FOUND");
+      }
+
+      const deckOwner = deckData.data()?.owner_id;
+
+      if (deckOwner !== userID) {
+        throw new Error("NOT_AUTHORIZED_TO_UPDATE_DECK");
+      }
+
+      // TODO: Check if the user role is admin
+      // AND the data to be changed is only the is_deleted field
+      // OR the is_private field
+
       await deckRef.update(data);
 
       const updatedDeck = await deckRef.get();
@@ -233,11 +250,12 @@ export class DeckRepository extends FirebaseAdmin {
   *
   * @async
   * @function deleteDeck
+  * @param {string} [userID] - The ID of the one who owns the deck.
   * @param {string} deckID - The UID of the deck to be deleted.
   * @return {Promise<void>} The unique ID of the newly created deck.
   * @throws {Error} If the input data is invalid or Firestore operation fails.
   */
-  public async deleteDeck(deckID: string): Promise<void> {
+  public async deleteDeck(userID: string, deckID: string): Promise<void> {
     try {
       // Validate input
       if (!deckID || typeof deckID !== "string") {
@@ -252,6 +270,14 @@ export class DeckRepository extends FirebaseAdmin {
       if (!deckSnapshot.exists) {
         throw new Error("DECK_NOT_FOUND");
       }
+
+      const deckOwner = deckSnapshot.data()?.owner_id;
+
+      if (deckOwner !== userID) {
+        throw new Error("NOT_AUTHORIZED_TO_DELETE_DECK");
+      }
+
+      // TODO: Check if the user role is admin
 
       // Permanently delete the deck
       await deckRef.delete();

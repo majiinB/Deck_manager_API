@@ -30,6 +30,7 @@ import cors, {CorsOptions} from "cors";
 import deckRoutes from "./routes/Routes";
 import {AuthenticatedRequest} from "./interface/AuthenticatedRequest";
 import {BaseResponse} from "./models/BaseResponse";
+import {AuthenticationService} from "./services/AuthenticationService";
 
 /**
  * Configuration options for CORS (Cross-Origin Resource Sharing).
@@ -67,12 +68,13 @@ const corsOptions: CorsOptions = {
 
 const app = express();
 const baseResponse = new BaseResponse();
+const authService = new AuthenticationService();
 
 // Middleware
 app.use(cors(corsOptions));
 // TODO: Add rate limiter
 app.use(express.json());
-// app.use(errorHandler);
+app.use(authService.verifyFirebaseToken.bind(authService)); // Middleware to verify Firebase token
 app.use("/v1/decks", deckRoutes);
 app.get("/v1", (req: AuthenticatedRequest, res) => {
   baseResponse.setStatus(200);
