@@ -277,24 +277,24 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-  * Deletes a deck in the Firestore database.
-  *
-  * @async
-  * @function deleteFlashcard
-  * @param {string} [userID] - The ID of the one who owns the deck.
-  * @param {string} deckID - The UID of the deck to be deleted.
-  * @param {string} flashcardID - The UID of the specific flashcard.
-  * @return {Promise<void>} The unique ID of the newly created deck.
-  * @throws {Error} If the input data is invalid or Firestore operation fails.
-  */
-  public async deleteFlashcard(userID: string, deckID: string, flashcardID: string): Promise<void> {
+ * Deletes multiple flashcards in the Firestore database and updates the flashcard count.
+ *
+ * @async
+ * @function deleteFlashcards
+ * @param {string} userID - The ID of the one who owns the deck.
+ * @param {string} deckID - The UID of the deck.
+ * @param {string[]} flashcardIDs - An array of flashcard UIDs to be deleted.
+ * @return {Promise<void>} Resolves when deletion is complete.
+ * @throws {Error} If the input data is invalid or Firestore operation fails.
+ */
+  public async deleteFlashcards(userID: string, deckID: string, flashcardIDs: string[]): Promise<void> {
     try {
       // Validate input
       if (!deckID || typeof deckID !== "string") {
         throw new Error("INVALID_DECK_ID");
       }
-      if (!flashcardID || typeof flashcardID !== "string") {
-        throw new Error("INVALID_FLASHCARD_ID");
+      if (!Array.isArray(flashcardIDs) || flashcardIDs.length === 0) {
+        throw new Error("INVALID_FLASHCARD_IDS");
       }
 
       const db = this.getDb();
@@ -302,7 +302,6 @@ export class FlashcardRepository extends FirebaseAdmin {
 
       // Check if deck exists before deleting
       const deckSnapshot = await deckRef.get();
-
       if (!deckSnapshot.exists) {
         throw new Error("DECK_NOT_FOUND");
       }
@@ -311,24 +310,34 @@ export class FlashcardRepository extends FirebaseAdmin {
         throw new Error("UNAUTHORIZED_USER");
       }
 
-      const flashcardRef = deckRef
-        .collection("flashcards")
-        .doc(flashcardID);
+      const batch = db.batch();
+      let deletedCount = 0;
 
-      const flashcardSnapshot = await flashcardRef.get();
-      if (!flashcardSnapshot.exists) {
-        throw new Error("FLASHCARD_NOT_FOUND");
+      for (const flashcardID of flashcardIDs) {
+        const flashcardRef = deckRef.collection("flashcards").doc(flashcardID);
+        const flashcardSnapshot = await flashcardRef.get();
+
+        if (flashcardSnapshot.exists) {
+          batch.delete(flashcardRef);
+          deletedCount++;
+        }
       }
 
-      // Permanently delete the flashcard
-      await flashcardRef.delete();
-      console.log(`Flashcard with ID ${flashcardID}, from deck ${deckID} has been deleted.`);
+      // Commit batch delete
+      await batch.commit();
+      console.log(`Deleted ${deletedCount} flashcards from deck ${deckID}`);
+
+      // Update flashcard count
+      if (deletedCount > 0) {
+        const newFlashcardCount = (deckSnapshot.data()?.flashcard_count || 0) - deletedCount;
+        await deckRef.update({flashcard_count: Math.max(newFlashcardCount, 0)});
+      }
     } catch (error) {
-      console.error("Error deleting flashcard:", error);
+      console.error("Error deleting flashcards:", error);
       if (error instanceof Error) {
         throw new Error(error.message);
       } else {
-        throw new Error("DELETE_FLASHCARD_UNKNOWN_ERROR");
+        throw new Error("DELETE_FLASHCARDS_UNKNOWN_ERROR");
       }
     }
   }

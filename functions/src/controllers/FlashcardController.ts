@@ -459,11 +459,11 @@ export class FlashcardController {
     const userID = req.user?.user_id;
     try {
       const deckID = req.params.deckID;
-      const flashcardID = req.params.flashcardID;
-      await this.flashcardService.deleteFlashcard(userID, deckID, flashcardID);
+      const flashcardIDs = req.body.flashcardIDs;
+      await this.flashcardService.deleteFlashcard(userID, deckID, flashcardIDs);
 
       baseResponse.setStatus(200);
-      baseResponse.setMessage(`Flashcard with ID of ${flashcardID} from deck ${deckID} is successfully deleted`);
+      baseResponse.setMessage(`Flashcard with ID of ${flashcardIDs} from deck ${deckID} is successfully deleted`);
       baseResponse.setData(null);
 
       res.status(200).json(baseResponse);

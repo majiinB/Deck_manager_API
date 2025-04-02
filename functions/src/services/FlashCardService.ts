@@ -156,12 +156,12 @@ export class FlashcardService {
    * Deletes (HARD) a specific flashcard.
    * @param {string} userID - The ID of the one who owns the deck.
    * @param {string} deckID - The UID of the deck to be delete.
-   * @param {string} flashcardID - The UID of the flashcard to be deleted.
+   * @param {string[]} flashcardIDs - An array of flashcard UIDs to be deleted.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async deleteFlashcard(userID: string, deckID: string, flashcardID: string): Promise<void> {
+  public async deleteFlashcard(userID: string, deckID: string, flashcardIDs: string[]): Promise<void> {
     try {
-      await this.flashcardRepository.deleteFlashcard(userID, deckID, flashcardID);
+      await this.flashcardRepository.deleteFlashcards(userID, deckID, flashcardIDs);
     } catch (error) {
       console.error("Error deleting deck:", error);
       throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");
