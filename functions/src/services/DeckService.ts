@@ -102,6 +102,7 @@ export class DeckService {
         cover_photo: coverPhotoRef,
         created_at: FirebaseAdmin.getTimeStamp(),
         description: description,
+        flashcard_count: 0,
       };
 
       const decks = await this.deckRepository.createDeck(deck);
