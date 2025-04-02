@@ -69,18 +69,6 @@ export class DeckController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const userID = req.user?.user_id;
 
-      if (!userID) {
-        errorResponse.setError("USER_ID_REQUIRED");
-        errorResponse.setMessage("User ID is a required field");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
       if (isNaN(limit) || limit <= 1) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");

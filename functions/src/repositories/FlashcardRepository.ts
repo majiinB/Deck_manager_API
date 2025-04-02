@@ -183,7 +183,14 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
 
       const flashcard = await query.collection("flashcards").add(flashcardData);
+
+      if ("flashcards_count" in (deck.data() || {})) {
+        const flashcardsCount = (deck.data()?.flashcards_count ?? 0) + 1;
+        await query.update({flashcards_count: flashcardsCount});
+      }
+
       const newFlashcard = flashcard ? {id: flashcard.id, ...flashcardData} : null;
+
       return {
         newFlashcard,
       };

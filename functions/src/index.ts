@@ -15,14 +15,14 @@
  *   from a valid source.
  *
  * Server:
- * - Listens on port 5001.
+ * - Listens on port 5001. (Firebase Emulator)
  *
  * To start the server, run `firebase emulators:start`. The server will listen
  * on the specified port.
  *
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-03-28
+ * @updated 2025-04-02
  */
 import * as functions from "firebase-functions";
 import express from "express";
