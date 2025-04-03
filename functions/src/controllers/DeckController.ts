@@ -4,23 +4,26 @@
  * @file DeckController.ts
  * This module defines the controller for managing decks in the Deck Manager API.
  * It provides methods for handling HTTP requests related to CRUD operations on decks,
- * including fetching public and owner-specific decks, creating, updating, and deleting decks.
+ * including fetching public and owner-specific decks, fetching a specific deck,
+ * creating, updating, and deleting decks. It interacts with the DeckService to
+ * perform the underlying business logic and data operations. Input validation
+ * for request parameters and body is also handled here.
  *
  * Methods:
- * - getOwnerDecks: Retrieves all decks owned by a specific user.
- * - getPublicDecks: Retrieves all public (non-private) decks.
+ * - getOwnerDecks: Retrieves decks owned by the authenticated user, with pagination.
+ * - getPublicDecks: Retrieves all public (non-private) decks, with pagination.
  * - getSpecifiDeck: Retrieves a specific deck by its ID.
- * - createDeck: Creates a new deck.
- * - updateDeck: Updates an existing deck by its ID.
- * - deleteDeck: Deletes a specific deck by its ID.
+ * - createDeck: Creates a new deck with validated title, description, and cover photo URL.
+ * - updateDeck: Updates an existing deck's details (title, description, privacy, cover photo, deletion status) by its ID.
+ * - deleteDeck: Deletes one or more decks specified by their IDs for the authenticated user.
  *
  * @module controller
  * @file DeckController.ts
  * @class DeckController
- * @classdesc Handles deck-related operations for the Deck Manager API.
- * @author Arthur M. Artugue
- * @created 2024-03-27
- * @updated 2025-03-29
+ * @classdesc Handles HTTP request routing and processing for deck-related operations, coordinating with the DeckService.
+ * @author Arthur M. Artugue // As per your example, replace if needed
+ * @created 2024-03-27 // As per your example, adjust if needed
+ * @updated 2025-04-03 // As per your example, adjust or use current date
  */
 import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
@@ -42,13 +45,15 @@ export class DeckController {
   /**
    * Regular expression pattern to validate Firebase Storage URLs for deck covers.
    * The pattern checks for URLs that match the Firebase Storage format and include
+   * the expected path structure and token.
    */
   private firebaseStoragePattern: RegExp;
 
   /**
-   * Initializes the DeckService with a DeckService instance.
+   * Initializes the DeckController with a DeckService instance.
+   * Also initializes the regex pattern for Firebase Storage URL validation.
    *
-   * @param {DeckService} deckService - The service handling data transformation.
+   * @param {DeckService} deckService - The service handling deck data operations.
    */
   constructor(deckService: DeckService) {
     this.deckService = deckService;
@@ -56,12 +61,14 @@ export class DeckController {
   }
 
   /**
-  * Handles the request to fetch all decks that an owner owns.
-  *
-  * @param {AuthenticatedRequest} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<void>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to fetch all decks that an owner owns.
+   * Validates query parameters (limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object, potentially including authenticated user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async getOwnerDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
@@ -69,6 +76,7 @@ export class DeckController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const userID = req.user?.user_id;
 
+      // Validate limit parameter
       if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50");
@@ -81,15 +89,19 @@ export class DeckController {
         return;
       }
 
+      // Get pagination token if provided
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+      // Call service method
       const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
 
+      // Send success response
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved decks");
       baseResponse.setData(decks);
 
       res.status(200).json(baseResponse);
     } catch (error) {
+      // Handle errors
       if (error instanceof Error) {
         errorResponse.setError(error.name);
         errorResponse.setMessage(error.message);
@@ -99,6 +111,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in get owner decks");
@@ -108,23 +121,27 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }
 
   /**
-  * Handles the request to fetch all decks that are not private (is published).
-  *
-  * @param {Request} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to fetch all decks that are not private (are published).
+   * Validates query parameters (limit) and uses DeckService for retrieval.
+   * Responds with paginated public deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async getPublicDecks(req: Request, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
+      // Validate limit parameter
       if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.");
@@ -137,9 +154,12 @@ export class DeckController {
         return;
       }
 
+      // Get pagination token if provided
       const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+      // Call service method
       const decks = await this.deckService.getPublicDecks(limit, nextPageToken);
 
+      // Send success response
       baseResponse.setStatus(200);
       baseResponse.setMessage("Successfuly retrieved decks");
       baseResponse.setData(decks);
@@ -147,6 +167,7 @@ export class DeckController {
       res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
+        // Handle errors
         errorResponse.setError(error.name);
         errorResponse.setMessage(error.message);
 
@@ -155,6 +176,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in get decks");
@@ -164,24 +186,30 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }
 
   /**
-  * Handles the request to fetch a specific deck
-  *
-  * @param {Request} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to fetch a specific deck by its ID.
+   * Uses DeckService for retrieval based on the deck ID from URL parameters.
+   * Responds with the specific deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing deckID parameter.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async getSpecifiDeck(req: Request, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
       const deckID = req.params.deckID;
+
+      // Call service method
       const deck = await this.deckService.getSpecificDeck(deckID);
 
+      // Send success response
       baseResponse.setStatus(200);
       baseResponse.setMessage("Deck was successfully retrieved");
       baseResponse.setData(deck);
@@ -189,6 +217,7 @@ export class DeckController {
       res.status(200).json(baseResponse);
     } catch (error) {
       if (error instanceof Error) {
+        // Handle errors
         errorResponse.setError(error.name);
         errorResponse.setMessage(error.message);
 
@@ -197,6 +226,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in get specific deck");
@@ -206,17 +236,21 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }
 
   /**
-  * Handles the request to create a deck
-  *
-  * @param {AuthenticatedRequest} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to create a new deck.
+   * Validates required fields (deckTitle, deckDescription, coverPhoto) from the request body.
+   * Uses DeckService to create the deck for the authenticated user.
+   * Responds with the created deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object containing deck details in the body and user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async createDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
@@ -224,6 +258,7 @@ export class DeckController {
       const {deckTitle, deckDescription, coverPhoto} = req.body;
       const userID = req.user?.user_id;
 
+      // --- Input Validations ---
       // Deck title validation
       if (!deckTitle) {
         errorResponse.setError("DECK_TITLE_REQUIRED");
@@ -317,14 +352,16 @@ export class DeckController {
         res.status(400).json(baseResponse);
         return;
       }
+      // --- End Validations ---
 
+      // Call service method
       const deck = await this.deckService.createDeck(deckTitle, userID, coverPhoto, deckDescription);
 
-      baseResponse.setStatus(200);
+      baseResponse.setStatus(201);
       baseResponse.setMessage("Deck was successfully created");
       baseResponse.setData(deck);
 
-      res.status(200).json(baseResponse);
+      res.status(201).json(baseResponse);
       return;
     } catch (error) {
       if (error instanceof Error) {
@@ -352,12 +389,15 @@ export class DeckController {
   }
 
   /**
-  * Handles the request to update a specific deck
-  *
-  * @param {AuthenticatedRequest} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to update a specific deck.
+   * Validates the fields provided for update (deckTitle, coverPhoto, isDeleted, isPrivate, deckDescription).
+   * Ensures at least one valid field is provided. Uses DeckService to apply updates.
+   * Responds with the updated deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object containing update details in body, deckID in params, and user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async updateDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
@@ -378,6 +418,7 @@ export class DeckController {
           baseResponse.setData(errorResponse);
 
           res.status(400).json(baseResponse);
+          return;
         }
         updateData.title = deckTitle.trim();
       }
@@ -392,6 +433,7 @@ export class DeckController {
           baseResponse.setData(errorResponse);
 
           res.status(400).json(baseResponse);
+          return;
         }
         updateData.description = deckDescription.trim();
       }
@@ -406,6 +448,7 @@ export class DeckController {
           baseResponse.setData(errorResponse);
 
           res.status(400).json(baseResponse);
+          return;
         }
         updateData.is_private = isPrivate;
       }
@@ -420,6 +463,7 @@ export class DeckController {
           baseResponse.setData(errorResponse);
 
           res.status(400).json(baseResponse);
+          return;
         }
         updateData.is_deleted = isDeleted;
       }
@@ -434,6 +478,7 @@ export class DeckController {
           baseResponse.setData(errorResponse);
 
           res.status(400).json(baseResponse);
+          return;
         }
         updateData.cover_photo = coverPhoto;
       }
@@ -447,6 +492,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       }
 
       const deck = await this.deckService.updateDeck(userID, deckID, updateData);
@@ -466,6 +512,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in update deck");
@@ -475,17 +522,21 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }
 
   /**
-  * Handles the request to delete a specific deck
-  *
-  * @param {AuthenticatedRequest} req - The HTTP request object.
-  * @param {Response} res - The HTTP response object.
-  * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
-  */
+   * Handles the request to delete one or more decks.
+   * Expects an array of deck IDs in the request body.
+   * Uses DeckService to perform the deletion for the authenticated user.
+   * Responds with a success message or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object containing deckIDs array in body and user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
   public async deleteDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
@@ -509,6 +560,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
+        return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
         errorResponse.setMessage("An unknown error occurred in delete deck");
@@ -518,6 +570,7 @@ export class DeckController {
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);
+        return;
       }
     }
   }
