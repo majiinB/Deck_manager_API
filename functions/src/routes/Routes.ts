@@ -44,7 +44,7 @@ const flashcardController = new FlashcardController(flashcardService);
 // DECK ROUTES
 
 /**
- * @route GET api/v1/decks/
+ * @route GET /v1/decks/
  * @description Fetches all decks.
  * @group Decks - Operations related to flashcard decks
  * @returns {Object} 200 - A JSON object containing all decks
@@ -55,7 +55,7 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 /**
- * @route GET api/v1/decks/public
+ * @route GET /v1/decks/public
  * @description Fetches all decks.
  * @group Decks - Operations related to flashcard decks
  * @returns {Object} 200 - A JSON object containing all decks
@@ -66,7 +66,7 @@ router.get("/public", async (req: Request, res: Response) => {
 });
 
 /**
- * @route GET api/v1/decks/:deckID
+ * @route GET /v1/decks/:deckID
  * @description Fetches a specific deck by its unique identifier.
  * @group Decks - Operations related to flashcard decks
  *
@@ -81,7 +81,7 @@ router.get("/:deckID", async (req: Request, res: Response) => {
 });
 
 /**
- * @route POST api/v1/decks/
+ * @route POST /v1/decks/
  * @description Creates a new flashcard deck.
  * @group Decks - Operations related to flashcard decks
  *
@@ -125,7 +125,7 @@ router.post("/delete", async (req: Request, res: Response) => {
 // FLASHCARDS ROUTES
 
 /**
- * @route GET api/v1/decks/:deckID/flashcards
+ * @route GET /v1/decks/:deckID/flashcards
  * @description Fetches all flashcards.
  * @group Decks - Operations related to flashcard decks
  * @param {string} deckID - The unique identifier of the deck where the flashcard is found (from URL params).

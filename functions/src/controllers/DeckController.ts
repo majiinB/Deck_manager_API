@@ -69,7 +69,7 @@ export class DeckController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const userID = req.user?.user_id;
 
-      if (isNaN(limit) || limit <= 1) {
+      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
 
@@ -125,7 +125,7 @@ export class DeckController {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-      if (isNaN(limit) || limit <= 1) {
+      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
 
