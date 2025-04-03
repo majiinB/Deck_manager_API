@@ -46,154 +46,142 @@ The **Deck Manager API Service** is a hybrid API that primarily follows RESTful 
 ### Installation
 
 1. 🛠️ Clone this repository to your local machine.
-2. 📦 Install dependencies using `npm install`.
-3. ⚙️ Set up environment variables:
-   - `GEMINI_API_KEY`: Your Google Generative AI API key.
-   - `ASSISTANT_ID`: Your OpenAI assistant ID.
-   - `FIREBASE_API_KEY`: Found in Firebase admin.
-   - `AUTH_DOMAIN`: Found in Firebase admin.
-   - `PROJECT_ID`: Found in Firebase admin.
-   - `STORAGE_BUCKET`: Found in Firebase admin.
-   - `MESSAGING_SENDER_ID`: Found in Firebase admin.
-   - `APP_ID`: Found in Firebase admin.
-   - `KEY_FILE`: Found in Firebase Service Providers.
-4. 📃 generate your firebase private key json file and place it in your project's root folder
-5. 🚀 Run the server using `npm start` or `nodemon`.
+2. ➡️ Go to the function directory
+3. 📦 Install dependencies using `npm install`.
+4. 🪪 Login to your firebase cli
+5. 🏗️ Run `npm run build`.
+6. 🚀 Start firebase emulator `firebase emulators:start`.
 
 ---
 
-### 📡 API Endpoints
+## 📡 API Endpoints
 
-<DeckRoutes>
-  <Route method="GET" endpoint="/decks/" description="Retrieve all decks owned by the user"/>
-  <Route method="GET" endpoint="/decks/public" description="Retrieve all public decks"/>
-  <Route method="GET" endpoint="/decks/:deckID" description="Retrieve a specific deck by ID"/>
-  <Route method="GET" endpoint="/decks/search?q=&lt;query&gt;" description="Search decks by name or description"/>
-  <Route method="GET" endpoint="/decks/suggestions" description="Get deck recommendations for a user"/>
-  <Route method="POST" endpoint="/decks/" description="Create a new deck"/>
-  <Route method="PUT" endpoint="/decks/:deckID" description="Update a specific deck"/>
-  <Route method="DELETE" endpoint="/decks/:deckID" description="Hard delete a deck"/>
-  <Route method="POST" endpoint="/decks/delete" description="Soft delete a deck"/>
-</DeckRoutes>
+### ⚙️ General Routes
 
-<FlashcardRoutes>
-  <Route method="GET" endpoint="/decks/:deckID/flashcards" description="Retrieve all flashcards in a deck"/>
-  <Route method="GET" endpoint="/decks/:deckID/flashcards/random" description="Retrieve random flashcards from a deck"/>
-  <Route method="GET" endpoint="/decks/:deckID/flashcards/:flashcardID" description="Retrieve a specific flashcard by ID"/>
-  <Route method="POST" endpoint="/decks/:deckID/flashcards" description="Add a new flashcard to a deck"/>
-  <Route method="PUT" endpoint="/decks/:deckID/flashcards/:flashcardID" description="Update a flashcard"/>
-  <Route method="DELETE" endpoint="/decks/:deckID/flashcards/:flashcardID" description="Delete a flashcard"/>
-</FlashcardRoutes>
+- **GET /v1**
+  - **Description**: Checks if the server is running.
+  - **Response**:
+    - `200 OK`: "Deck Manager API is running"
 
-#### 🛡️ Content Moderation
+### 🃏 Deck Routes
 
-- **POST** `/v2/deck/moderate/:id`
+- **GET /v1/decks**
 
-  - **Description:** Uses Gemini AI to analyze user-generated content and determine its appropriateness.
-  - **Path Parameter:**
-    - `id` (string) – The user's unique ID.
-  - **Request Body:**
-    ```json
-    {
-      "deckId": "<unique_deck_id>"
-    }
-    ```
-  - **Response:**
+  - **Description**: Retrieves all decks.
+  - **Response**:
+    - `200 OK`: JSON object containing all decks.
 
-    ```json
-    {
-      "status": 200,
-      "request_owner_id": "<id>",
-      "message": "Moderation review successful",
-      "data": {
-        "quiz_data": {
-          "overall_verdict": {
-            "is_appropriate": false,
-            "moderation_decision": "content is inappropriate",
-            "flagged_cards": [
-              {
-                "description": "Activates a configured interface.",
-                "term": "Tangina mo",
-                "reason": "Profanity and offensive language"
-              }
-            ]
-          }
-        }
-      }
-    }
-    ```
+- **GET /v1/decks/:deckID**
 
-    or
+  - **Description**: Retrieves a specific deck by its ID.
+  - **Parameters**:
+    - `deckID`: The unique identifier of the deck.
+  - **Response**:
+    - `200 OK`: JSON object containing the requested deck.
+    - `404 Not Found`: Deck not found.
 
-    ```json
-    {
-      "status": 200,
-      "request_owner_id": "<id>",
-      "message": "Moderation review successful",
-      "data": {
-        "quiz_data": {
-          "overall_verdict": {
-            "is_appropriate": true,
-            "moderation_decision": "content is appropriate",
-            "flagged_cards": []
-          }
-        }
-      }
-    }
-    ```
+- **POST /v1/decks**
 
-#### 📝 Quiz Generation
+  - **Description**: Creates a new deck.
+  - **Request Body**:
+    - `title`: The title of the deck.
+    - `coverPhoto` (optional): URL of the deck's cover photo.
+  - **Response**:
+    - `201 Created`: JSON object containing the created deck.
+    - `400 Bad Request`: Missing required fields.
 
-- **POST** `/v2/deck/generate/quiz/:id`
+- **PUT /v1/decks/:deckID**
 
-  - **Description:** Generates quiz questions based on provided deck id using Gemini AI.
-  - **Path Parameter:**
-    - `id` (string) – The user's unique ID.
-  - **Request Body:**
-    ```json
-    {
-      "deckId": "<unique_deck_id>"
-    }
-    ```
-  - **Response:**
+  - **Description**: Updates an existing deck by its ID.
+  - **Parameters**:
+    - `deckID`: The unique identifier of the deck to update.
+  - **Request Body** (optional):
+    - `title`: The updated title.
+    - `coverPhoto`: The updated cover photo URL.
+    - `isPrivate`: Set the deck as private or public.
+    - `isDeleted`: Marks the deck as deleted.
+    - `madeToQuizAt`: Timestamp when the deck was converted to a quiz.
+  - **Response**:
+    - `200 OK`: JSON object with the updated deck.
+    - `400 Bad Request`: Invalid request.
+    - `500 Internal Server Error`: Server issues.
 
-    ```json
-    {
-      "status": 200,
-      "request_owner_id": "<id>",
-      "message": "Quiz creation for deck with id:<id> is successful",
-      "data": {
-        "quizId": "<quiz_id>"
-      }
-    }
-    ```
+- **DELETE /v1/decks/:deckID**
+  - **Description**: Hard deletes a deck by its ID.
+  - **Parameters**:
+    - `deckID`: The unique identifier of the deck.
+  - **Response**:
+    - `200 OK`: Confirmation of deck deletion.
+    - `404 Not Found`: Deck not found.
 
-    or
+### 🎴 Flashcard Routes
 
-    ```json
-    {
-      "status": 200,
-      "request_owner_id": "<id>",
-      "message": "There is already a quiz made for this deck in the 'quiz' collection",
-      "data": {
-        "quiz_id": "<quiz_id>"
-      }
-    }
-    ```
+- **GET /v1/decks/:deckID/flashcards**
 
-    or
+  - **Description**: Retrieves all flashcards for a specific deck.
+  - **Parameters**:
+    - `deckID`: The unique identifier of the deck.
+  - **Response**:
+    - `200 OK`: JSON object containing all flashcards in the deck.
 
-    ```json
-    {
-      "status": 200,
-      "request_owner_id": "<id>",
-      "message": "Quiz creation for new flashcards in deck ekZBroavEBX76mAXVG9Z is successful",
-      "data": {
-          "no_of_new_flashcards": <num_of_new_flashcards_detected>
-      }
-    }
+- **GET /v1/decks/:deckID/flashcards/:flashcardID**
 
-    ```
+  - **Description**: Retrieves a specific flashcard by its ID.
+  - **Parameters**:
+    - `deckID`: The deck's unique identifier.
+    - `flashcardID`: The flashcard's unique identifier.
+  - **Response**:
+    - `200 OK`: JSON object containing the requested flashcard.
+    - `404 Not Found`: Flashcard not found.
+
+- **POST /v1/decks/:deckID/flashcards**
+
+  - **Description**: Creates a new flashcard in a specific deck.
+  - **Parameters**:
+    - `deckID`: The deck's unique identifier.
+  - **Request Body**:
+    - `term`: The term on the flashcard.
+    - `definition`: The definition on the flashcard.
+  - **Response**:
+    - `201 Created`: JSON object containing the created flashcard.
+    - `400 Bad Request`: Missing required fields.
+
+- **PUT /v1/decks/:deckID/flashcards/:flashcardID**
+
+  - **Description**: Updates a specific flashcard by its ID.
+  - **Parameters**:
+    - `deckID`: The deck's unique identifier.
+    - `flashcardID`: The flashcard's unique identifier.
+  - **Request Body** (optional):
+    - `term`: The updated term.
+    - `definition`: The updated definition.
+    - `isStarred`: Marks the flashcard as starred.
+    - `isDeleted`: Marks the flashcard as deleted.
+  - **Response**:
+    - `200 OK`: JSON object with the updated flashcard.
+    - `400 Bad Request`: Invalid request.
+    - `500 Internal Server Error`: Server issues.
+
+- **DELETE /v1/decks/:deckID/flashcards/:flashcardID**
+
+  - **Description**: Deletes a specific flashcard by its ID.
+  - **Parameters**:
+    - `deckID`: The deck's unique identifier.
+    - `flashcardID`: The flashcard's unique identifier.
+  - **Response**:
+    - `200 OK`: Confirmation of flashcard deletion.
+    - `404 Not Found`: Flashcard not found.
+
+- **GET /v1/decks/:deckID/flashcards/random**
+  - **Description**: Fetches a random set of flashcards from a specific deck.
+  - **Parameters**:
+    - `deckID`: The unique identifier of the deck.
+  - **Response**:
+    - `200 OK`: JSON object containing the randomly selected flashcards.
+
+## 🔑 Authentication
+
+The API requires Firebase authentication for all requests. Ensure that the Firebase token is provided in the request headers under `Authorization: Bearer <token>`.
 
 ---
 
