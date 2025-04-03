@@ -67,7 +67,7 @@ export class FlashcardController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const deckID = req.params.deckID;
 
-      if (isNaN(limit) || limit <= 1) {
+      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number.");
 
@@ -123,13 +123,13 @@ export class FlashcardController {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
-      const numOfCards = req.query.numOfCards ? parseInt(req.query.limit as string, 10) : null;
+      const limit = req.query.numOfCards ? parseInt(req.query.limit as string, 10) : null;
       const deckID = req.params.deckID;
 
-      if (numOfCards !== null) {
-        if (isNaN(numOfCards) || numOfCards <= 5) {
-          errorResponse.setError("INVALID_NUMBER_OF_CARDS_VALUE");
-          errorResponse.setMessage("Invalid number of cards value. It must be a positive number.");
+      if (limit !== null) {
+        if (isNaN(limit) || (limit < 5 || limit > 50)) {
+          errorResponse.setError("INVALID_LIMIT_VALUE");
+          errorResponse.setMessage("Invalid limit value. It must be a positive number greater than or equal to five and less than 50.");
 
           baseResponse.setStatus(400);
           baseResponse.setMessage("An error has occured during the retrieval of random flashcards");
@@ -139,7 +139,7 @@ export class FlashcardController {
         }
       }
 
-      const flashcards = await this.flashcardService.getRandomFlashcards(deckID, numOfCards);
+      const flashcards = await this.flashcardService.getRandomFlashcards(deckID, limit);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Random flashcards successfuly retrieved");
