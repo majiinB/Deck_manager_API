@@ -368,11 +368,7 @@ export class DeckRepository extends FirebaseAdmin {
         if (error.name === "INVALID_DECK_IDS") {
           throw error;
         }
-        if (error.message.includes("One or more errors occurred")) {
-          const partialFailureError = new Error(error.message);
-          partialFailureError.name = "PARTIAL_DELETE_FAILURE";
-          throw partialFailureError;
-        }
+
         const internalError = new Error("An error occured while deleting the decks");
         internalError.name = "DATABASE_DELETE_ERROR";
         throw internalError;

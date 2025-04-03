@@ -1,3 +1,31 @@
+/**
+ * Flashcard Manager API - Repository
+ *
+ * @file FlashcardRepository.ts
+ * This module defines the repository layer for managing flashcard data within Firestore,
+ * where flashcards are stored as a subcollection under their respective decks.
+ * Extending FirebaseAdmin, it provides methods for CRUD operations on flashcards,
+ * including retrieving lists (paginated or all), getting specific flashcards,
+ * creating, updating, and deleting them. It handles necessary validations
+ * (deck existence, owner checks) and maintains the flashcard count on the parent deck document.
+ *
+ * Methods:
+ * - getFlashcards: Queries Firestore for non-deleted flashcards within a specific deck, supporting pagination.
+ * - getAllFlashcards: Queries Firestore for all non-deleted flashcards within a specific deck.
+ * - getSpecificFlashcard: Retrieves a single flashcard document from a specific deck's subcollection by its ID.
+ * - createFlashcard: Adds a new flashcard document to a deck's subcollection and increments the deck's flashcard count.
+ * - updateFlashcard: Updates fields of an existing flashcard document and adjusts the deck's flashcard count if deletion status changes.
+ * - deleteFlashcards: Deletes one or more flashcard documents from a deck's subcollection using a batch operation and decrements the deck's flashcard count.
+ *
+ * @module repository
+ * @file FlashcardRepository.ts
+ * @class FlashcardRepository
+ * @classdesc Provides data access methods for the 'flashcards' subcollection within 'decks' in Firestore, managing related deck counts and performing necessary authorization checks.
+ * @author Arthur M. Artugue
+ * @created 2024-03-30
+ * @updated 2025-04-03
+ */
+
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 
 /**
@@ -8,11 +36,14 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
  */
 export class FlashcardRepository extends FirebaseAdmin {
   /**
-   * Retrieves a list of flashcards owned by a certain user with pagination support.
-   * @param {string} deckID - The deck's UID.
-   * @param {number} limit - The maximum number of decks to retrieve.
-   * @param {string} [nextPageToken=null] - The token for the next page of results.
-   * @return {Promise<any[]>} A promise that resolves to an array of decks.
+   * Retrieves a paginated list of non-deleted flashcards for a specific deck from Firestore.
+   * Orders flashcards by creation date.
+   *
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @param {number} limit - The maximum number of flashcards to return per page.
+   * @param {string | null} [nextPageToken=null] - The document ID of the last flashcard from the previous page, used for pagination.
+   * @return {Promise<object>} A promise resolving to an object containing the flashcards array and the next page token.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, DECK_NOT_FOUND, DATABASE_FETCH_ERROR) on failure or invalid input.
    */
   public async getFlashcards(deckID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
     try {
@@ -70,7 +101,7 @@ export class FlashcardRepository extends FirebaseAdmin {
           throw error;
         }
         const internalError = new Error("An error occured while fetching the flashcards");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while fetching the flashcards");
@@ -81,9 +112,12 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a all flashcards.
-   * @param {string} deckID - The deck's UID.
-   * @return {Promise<any[]>} A promise that resolves to an array of decks.
+   * Retrieves all non-deleted flashcards for a specific deck from Firestore.
+   * Orders flashcards by creation date. Note: This might be inefficient for decks with very large numbers of flashcards.
+   *
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @return {Promise<object>} A promise resolving to an object containing an array of all flashcards.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, DECK_NOT_FOUND, DATABASE_FETCH_ERROR) on failure or invalid input.
    */
   public async getAllFlashcards(deckID: string): Promise<object> {
     try {
@@ -127,7 +161,7 @@ export class FlashcardRepository extends FirebaseAdmin {
           throw error;
         }
         const internalError = new Error("An error occured while fetching all flashcards");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while fetching all flashcards");
@@ -138,11 +172,12 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a specific deck owned by a certain user.
-   * @async
-   * @param {string} deckID - The deck's UID.
-   * @param {string} flashcardID - The flahscard's UID.
-   * @return {Promise<object>} A promise that resolves to an array of decks.
+   * Retrieves a specific flashcard document by its ID from within a specific deck's subcollection.
+   *
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @param {string} flashcardID - The unique identifier of the flashcard to retrieve.
+   * @return {Promise<object>} A promise resolving to an object containing the flashcard data (or null if not found).
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, DECK_NOT_FOUND, INVALID_FLASHCARD_ID, SPECIFIC_FLASHCARD_NOT_FOUND, DATABASE_FETCH_ERROR) on failure or invalid input.
    */
   public async getSpecificFlashcard(deckID: string, flashcardID: string): Promise<object> {
     try {
@@ -184,15 +219,15 @@ export class FlashcardRepository extends FirebaseAdmin {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "DECK_NOT_FOUND" ||
-            error.name === "INVALID_DECK_ID" ||
-            error.name === "SPECIFIC_FLASHCARD_NOT_FOUND" ||
-            error.name === "INVALID_FLASHCARD_ID"
-        ) {
+        const knownErrors = [
+          "INVALID_DECK_ID", "DECK_NOT_FOUND", "INVALID_FLASHCARD_ID",
+          "SPECIFIC_FLASHCARD_NOT_FOUND",
+        ];
+        if (knownErrors.includes(error.name)) {
           throw error;
         }
         const internalError = new Error("An unknown error occurred while fetching the specific flashcards");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while fetching the specific flashcards");
@@ -203,17 +238,17 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-  * Creates a new flashcard in the Firestore database.
-  *
-  * @async
-  * @function createFlashcard
-  * @param {string} [userID] - The ID of the one who owns the deck.
-  * @param {string} deckID - The deck's UID.
-  * @param {Object} flashcardData - The data for the new flashcard.
-  * @return {Promise<object>} The unique ID of the newly created deck.
-  * @throws {Error} If the input data is invalid or Firestore operation fails.
-  */
-  public async createFlashcard(userID: string, deckID: string, flashcardData: object): Promise<object> {
+   * Creates a new flashcard document within a specific deck's subcollection in Firestore.
+   * Also increments the 'flashcard_count' field on the parent deck document.
+   * Performs checks for deck existence, deck deletion status, and user authorization.
+   *
+   * @param {string} userID - The ID of the user creating the flashcard (must match deck owner).
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @param {object} flashcardData - The data object for the new flashcard (should match expected schema, excluding ID).
+   * @return {Promise<object | void>} A promise resolving to an object containing the newly created flashcard data including its ID.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, INVALID_USER_ID, INVALID_FLASHCARD_DATA, DECK_NOT_FOUND, DECK_DELETED, UNAUTHORIZED_USER, DATABASE_CREATE_ERROR) on failure or invalid input/permissions.
+   */
+  public async createFlashcard(userID: string, deckID: string, flashcardData: object): Promise<object | void> {
     try {
       // Validate input
       if (!deckID || typeof deckID !== "string") {
@@ -243,13 +278,15 @@ export class FlashcardRepository extends FirebaseAdmin {
         throw error;
       }
 
-      if (deck.data()?.is_deleted) {
+      const deckData = deck.data();
+
+      if (deckData?.is_deleted) {
         const error = new Error("Deck has been deleted");
         error.name = "DECK_DELETED";
         throw error;
       }
 
-      if (deck.data()?.owner_id !== userID) {
+      if (deckData?.owner_id !== userID) {
         const error = new Error("User is not authorized to create flashcards in this deck");
         error.name = "UNAUTHORIZED_USER";
         throw error;
@@ -269,39 +306,39 @@ export class FlashcardRepository extends FirebaseAdmin {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "DECK_NOT_FOUND" ||
-            error.name === "INVALID_DECK_ID" ||
-            error.name === "SPECIFIC_FLASHCARD_NOT_FOUND" ||
-            error.name === "INVALID_USER_ID" ||
-            error.name === "INVALID_FLASHCARD_DATA" ||
-            error.name === "UNAUTHORIZED_USER" ||
-            error.name === "DECK_DELETED") {
-          throw error;
+        if (error instanceof Error) {
+          const knownErrors = [
+            "INVALID_DECK_ID", "INVALID_USER_ID", "INVALID_FLASHCARD_DATA",
+            "DECK_NOT_FOUND", "DECK_DELETED", "UNAUTHORIZED_USER",
+          ];
+          if (knownErrors.includes(error.name)) {
+            throw error;
+          }
+          const internalError = new Error("An unknown error occurred while creating the flashcards");
+          internalError.name = "DATABASE_CREATE_ERROR";
+          throw internalError;
+        } else {
+          const unknownError = new Error("An unknown error occurred while creating the flashcards");
+          unknownError.name = "CREATE_FLASHCARDS_UNKNOWN_ERROR";
+          throw unknownError;
         }
-        const internalError = new Error("An unknown error occurred while creating the flashcards");
-        internalError.name = "INTERNAL_SERVER_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occurred while creating the flashcards");
-        unknownError.name = "CREATE_FLASHCARDS_UNKNOWN_ERROR";
-        throw unknownError;
       }
     }
   }
 
   /**
-  * Updates a deck document in Firestore with the provided data.
-  *
-  * @async
-  * @function updateFlashcard
-  * @param {string} userID - The ID of the one who owns the deck.
-  * @param {string} deckID - The unique identifier of the deck to update.
-  * @param {string} flashcardID - The UID of the specific flashcard.
-  * @param {Object} data - The key-value pairs representing the fields to update.
-  * @return {Promise<object>} - Resolves if the update is successful.
-  * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
-  */
-  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, data: object): Promise<object> {
+   * Updates an existing flashcard document within a specific deck's subcollection in Firestore.
+   * Adjusts the 'flashcard_count' on the parent deck if the 'is_deleted' status of the flashcard changes.
+   * Performs checks for deck/flashcard existence, deck deletion status, and user authorization.
+   *
+   * @param {string} userID - The ID of the user updating the flashcard (must match deck owner).
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @param {string} flashcardID - The unique identifier of the flashcard to update.
+   * @param {object} data - An object containing the fields and values to update on the flashcard.
+   * @return {Promise<object | void>} A promise resolving to an object containing the updated flashcard data including its ID.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, INVALID_FLASHCARD_ID, INVALID_UPDATE_DATA, DECK_NOT_FOUND, DECK_DELETED, UNAUTHORIZED_USER, FLASHCARD_NOT_FOUND, DATABASE_UPDATE_ERROR) on failure or invalid input/permissions.
+   */
+  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, data: object): Promise<object | void> {
     try {
       // Validate inputs
       if (!deckID || typeof deckID !== "string") {
@@ -309,13 +346,11 @@ export class FlashcardRepository extends FirebaseAdmin {
         error.name = "INVALID_DECK_ID";
         throw error;
       }
-
       if (!flashcardID || typeof flashcardID !== "string") {
         const error = new Error("Flashcard ID is not a valid flashcard ID. Flashcard ID is must be a string");
         error.name = "INVALID_FLASHCARD_ID";
         throw error;
       }
-
       if (!data || typeof data !== "object" || Array.isArray(data)) {
         const error = new Error("Update data is not a valid object. Update data must be an object");
         error.name = "INVALID_UPDATE_DATA";
@@ -387,18 +422,16 @@ export class FlashcardRepository extends FirebaseAdmin {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "INVALID_DECK_ID" ||
-            error.name === "INVALID_FLASHCARD_ID" ||
-            error.name === "INVALID_UPDATE_DATA" ||
-            error.name === "DECK_NOT_FOUND" ||
-            error.name === "DECK_DELETED" ||
-            error.name === "UNAUTHORIZED_USER" ||
-            error.name === "FLASHCARD_NOT_FOUND" ||
-            error.name === "DECK_NOT_FOUND_AFTER_UPDATE") {
+        const knownErrors = [
+          "INVALID_DECK_ID", "INVALID_FLASHCARD_ID", "INVALID_UPDATE_DATA",
+          "DECK_NOT_FOUND", "DECK_DELETED", "UNAUTHORIZED_USER",
+          "FLASHCARD_NOT_FOUND", "FLASHCARD_GONE_AFTER_UPDATE",
+        ];
+        if (knownErrors.includes(error.name)) {
           throw error;
         }
         const internalError = new Error("An unknown error occurred while updating the flashcard");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_UPDATE_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while updating the flashcard");
@@ -410,16 +443,17 @@ export class FlashcardRepository extends FirebaseAdmin {
 
 
   /**
- * Deletes multiple flashcards in the Firestore database and updates the flashcard count.
- *
- * @async
- * @function deleteFlashcards
- * @param {string} userID - The ID of the one who owns the deck.
- * @param {string} deckID - The UID of the deck.
- * @param {string[]} flashcardIDs - An array of flashcard UIDs to be deleted.
- * @return {Promise<void>} Resolves when deletion is complete.
- * @throws {Error} If the input data is invalid or Firestore operation fails.
- */
+   * Deletes multiple flashcard documents from a specific deck's subcollection using a Firestore batch.
+   * Also decrements the 'flashcard_count' on the parent deck document by the number of successfully deleted flashcards.
+   * Performs checks for deck existence and user authorization before proceeding.
+   * Skips flashcards that don't exist but proceeds with others.
+   *
+   * @param {string} userID - The ID of the user deleting the flashcards (must match deck owner).
+   * @param {string} deckID - The unique identifier of the parent deck.
+   * @param {string[]} flashcardIDs - An array of unique identifiers of the flashcards to delete.
+   * @return {Promise<void>} A promise that resolves when the deletion batch commit and count update are complete.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, INVALID_FLASHCARD_IDS, DECK_NOT_FOUND, UNAUTHORIZED_USER, DATABASE_DELETE_ERROR, PARTIAL_DELETE_FAILURE) on failure or invalid input/permissions.
+   */
   public async deleteFlashcards(userID: string, deckID: string, flashcardIDs: string[]): Promise<void> {
     try {
       // Validate input
@@ -475,14 +509,16 @@ export class FlashcardRepository extends FirebaseAdmin {
       }
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "INVALID_DECK_ID" ||
-            error.name === "INVALID_FLASHCARD_IDS" ||
-            error.name === "DECK_NOT_FOUND" ||
-            error.name === "UNAUTHORIZED_USER") {
+        const knownErrors = [
+          "INVALID_DECK_ID", "INVALID_FLASHCARD_IDS", "DECK_NOT_FOUND",
+          "UNAUTHORIZED_USER",
+        ];
+        if (knownErrors.includes(error.name)) {
           throw error;
         }
+
         const internalError = new Error("An unknown error occurred while deleting the flashcard");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_DELETE_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while deleting the flashcard");
