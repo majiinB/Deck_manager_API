@@ -35,11 +35,7 @@ export class DeckService {
       const decks = await this.deckRepository.getOwnerDecks(userID, limit, nextPageToken);
       return decks;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-      } else {
-        console.log("An unknown error occurred");
-      }
+      if (error instanceof Error) throw error.message;
     }
   }
 
@@ -55,13 +51,7 @@ export class DeckService {
       const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
       return decks;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-        throw new Error(error.message);
-      } else {
-        console.log("An unknown error occurred");
-        throw new Error("An unknown error occurred");
-      }
+      if (error instanceof Error) throw error.message;
     }
   }
 
@@ -75,11 +65,7 @@ export class DeckService {
       const decks = await this.deckRepository.getSpecificDeck(deckID);
       return decks;
     } catch (error) {
-      if (error instanceof Error) {
-        throw new Error(error.message);
-      } else {
-        throw new Error("GET_SPECIFIC_DECK_UNKNOWN_ERROR");
-      }
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -91,7 +77,7 @@ export class DeckService {
    * @param {string} description - The description of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null, description: string): Promise<object> {
+  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null, description: string): Promise<object | void> {
     try {
       const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
       const deck = {
@@ -108,8 +94,7 @@ export class DeckService {
       const decks = await this.deckRepository.createDeck(deck);
       return decks;
     } catch (error) {
-      console.error("Error creating deck:", error);
-      throw new Error(error instanceof Error ? error.message : "CREATE_DECK_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -120,13 +105,12 @@ export class DeckService {
    * @param {object} updateData - The title of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async updateDeck(userID: string, deckID: string, updateData: object): Promise<object> {
+  public async updateDeck(userID: string, deckID: string, updateData: object): Promise<object | void> {
     try {
       const updatedDeck = await this.deckRepository.updateDeck(userID, deckID, updateData);
       return updatedDeck;
     } catch (error) {
-      console.error("Error creating deck:", error);
-      throw new Error(error instanceof Error ? error.message : "CREATE_DECK_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
   /**
@@ -139,8 +123,7 @@ export class DeckService {
     try {
       await this.deckRepository.deleteDecks(userID, deckIDs);
     } catch (error) {
-      console.error("Error deleting deck:", error);
-      throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
 }
