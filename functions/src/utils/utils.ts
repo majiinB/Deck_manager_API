@@ -1,6 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
- * A utility class containing helper methods for common operations.
+ * Utility Class for Common Operations
+ *
+ * @file Utils.ts
+ * This module defines a utility class `Utils` that provides helper methods for common operations.
+ * These include cleaning and formatting title strings, formatting date objects, and shuffling arrays.
+ *
+ * @module utils
+ * @file Utils.ts
+ * @class Utils
+ * @classdesc A utility class containing helper methods for common operations.
+ * @author Arthur M. Artugue
+ * @created 2025-03-30
+ * @updated 2025-04-04
  */
 export class Utils {
   /**
