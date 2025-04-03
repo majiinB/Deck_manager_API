@@ -3,24 +3,29 @@
  *
  * @file routes.ts
  * This module defines the routes for managing decks and flashcards in the Deck Manager API.
- * It provides endpoints for CRUD operations on decks and flashcards, including soft and hard deletion.
+ * It sets up the API endpoints by associating URL paths with the corresponding controller methods,
+ * enabling CRUD operations on decks and flashcards.
  *
- * Routes:
- * - GET api/v1/decks/: Retrieves all decks.
- * - GET api/v1/decks/:deckID: Retrieves a specific deck by its ID.
- * - POST api/v1/decks/: Creates a new deck.
- * - PUT api/v1/decks/:deckID: Updates an existing deck by its ID.
- * - DELETE api/v1/decks/:deckID: Hard deletes a deck by its ID.
- * - GET api/v1/decks/:deckID/flashcards: Retrieves all flashcards from a specific deck.
- * - GET api/v1/decks/:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
- * - POST api/v1/decks/:deckID/flashcards: Adds a new flashcard to a specific deck.
- * - PUT api/v1/decks/:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
- * - DELETE api/v1/decks/:deckID/flashcards/:flashcardID: Deletes a specific flashcard by its ID.
+ * Deck Routes:
+ * - GET /v1/decks/: Fetches all decks.
+ * - GET /v1/decks/public: Fetches all public decks.
+ * - GET /v1/decks/:deckID: Fetches a specific deck by its ID.
+ * - POST /v1/decks/: Creates a new deck.
+ * - PUT /v1/decks/:deckID: Updates an existing deck by its ID.
+ * - POST /v1/decks/delete: Deletes a deck (HARD delete perform SOFT deletion by updating the is_deleted flag).
+ *
+ * Flashcard Routes:
+ * - GET /v1/decks/:deckID/flashcards: Retrieves all flashcards from a specific deck.
+ * - GET /v1/decks/:deckID/flashcards/random: Retrieves a randomized selection of flashcards from a specific deck.
+ * - GET /v1/decks/:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
+ * - POST /v1/decks/:deckID/flashcards: Adds a new flashcard to a specific deck.
+ * - PUT /v1/decks/:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
+ * - POST /v1/decks/:deckID/flashcards/delete: Deletes one or more flashcards from a specific deck.
  *
  * @module router
  * @file Routes.ts
  * @author Arthur M. Artugue
- * @created 2024-03-27
+ * @created 2024-03-30
  * @updated 2025-03-28
  */
 
