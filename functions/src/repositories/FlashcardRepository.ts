@@ -16,12 +16,20 @@ export class FlashcardRepository extends FirebaseAdmin {
    */
   public async getFlashcards(deckID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
     try {
+      if (!deckID || typeof deckID !== "string") {
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
+      }
+
       const db = this.getDb();
       const deckRef = db.collection("decks").doc(deckID);
       const deckSnap = await deckRef.get();
 
       if (!deckSnap.exists) {
-        throw new Error("DECK_NOT_FOUND");
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
       }
 
       let query = deckRef
@@ -54,11 +62,20 @@ export class FlashcardRepository extends FirebaseAdmin {
         nextPageToken: nextToken,
       };
     } catch (error) {
-      console.error("Error fetching decks:", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "DECK_NOT_FOUND" ||
+            error.name === "INVALID_DECK_ID") {
+          throw error;
+        } {
+          throw error;
+        }
+        const internalError = new Error("An error occured while fetching the flashcards");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("GET_DECK_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while fetching the flashcards");
+        unknownError.name = "GET_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }
@@ -70,12 +87,20 @@ export class FlashcardRepository extends FirebaseAdmin {
    */
   public async getAllFlashcards(deckID: string): Promise<object> {
     try {
+      if (!deckID || typeof deckID !== "string") {
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
+      }
+
       const db = this.getDb();
       const deckRef = db.collection("decks").doc(deckID);
       const deckSnap = await deckRef.get();
 
       if (!deckSnap.exists) {
-        throw new Error("DECK_NOT_FOUND");
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
       }
 
       const query = deckRef
@@ -95,11 +120,19 @@ export class FlashcardRepository extends FirebaseAdmin {
         flashcards,
       };
     } catch (error) {
-      console.error("Error fetching all decks:", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "DECK_NOT_FOUND" ||
+            error.name === "INVALID_DECK_ID"
+        ) {
+          throw error;
+        }
+        const internalError = new Error("An error occured while fetching all flashcards");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("GET_DECK_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while fetching all flashcards");
+        unknownError.name = "GET_ALL_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }
@@ -115,22 +148,34 @@ export class FlashcardRepository extends FirebaseAdmin {
     try {
       // Validate inputs
       if (!deckID || typeof deckID !== "string") {
-        throw new Error("INVALID_DECK_ID");
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
       }
       if (!flashcardID || typeof flashcardID !== "string") {
-        throw new Error("INVALID_FLASHCARD_ID");
+        const error = new Error(`Flashcard ${flashcardID} is not a valid flashcard ID. Flashcard ID is must be a string`);
+        error.name = "INVALID_FLASHCARD_ID";
+        throw error;
       }
 
       const db = this.getDb();
-      const flashcardRef = db
-        .collection("decks")
-        .doc(deckID)
-        .collection("flashcards")
-        .doc(flashcardID);
+      const deckRef = db.collection("decks").doc(deckID);
+      const deckSnap = await deckRef.get();
+
+      if (!deckSnap.exists) {
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
+      }
+
+      const flashcardRef = deckRef.collection("flashcards").doc(flashcardID);
       const flashcardSnap = await flashcardRef.get();
 
-      if (!flashcardSnap.exists) throw new Error("SPECIFIC_DECK_NOT_FOUND");
-
+      if (!flashcardSnap.exists) {
+        const error = new Error(`Flashcard ${flashcardID} does not exist`);
+        error.name = "SPECIFIC_FLASHCARD_NOT_FOUND";
+        throw error;
+      }
       // Extract deck data
       const flashcard = flashcardSnap.data() ? {id: flashcardSnap.id, ...flashcardSnap.data()} : null;
 
@@ -138,11 +183,21 @@ export class FlashcardRepository extends FirebaseAdmin {
         flashcard,
       };
     } catch (error) {
-      console.error("Error fetching flashcards:", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "DECK_NOT_FOUND" ||
+            error.name === "INVALID_DECK_ID" ||
+            error.name === "SPECIFIC_FLASHCARD_NOT_FOUND" ||
+            error.name === "INVALID_FLASHCARD_ID"
+        ) {
+          throw error;
+        }
+        const internalError = new Error("An unknown error occurred while fetching the specific flashcards");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("GET_SPECIFIC_FLASHCARD_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while fetching the specific flashcards");
+        unknownError.name = "GET_SPECIFIC_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }
@@ -161,8 +216,20 @@ export class FlashcardRepository extends FirebaseAdmin {
   public async createFlashcard(userID: string, deckID: string, flashcardData: object): Promise<object> {
     try {
       // Validate input
+      if (!deckID || typeof deckID !== "string") {
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
+      }
+      if (!userID || typeof userID !== "string") {
+        const error = new Error(`User ${userID} is not a valid user ID. User ID is must be a string`);
+        error.name = "INVALID_USER_ID";
+        throw error;
+      }
       if (!flashcardData || typeof flashcardData !== "object") {
-        throw new Error("INVALID_FLASHCARD_DATA");
+        const error = new Error("Flashcard data is not a valid object. Flashcard data must be an object");
+        error.name = "INVALID_FLASHCARD_DATA";
+        throw error;
       }
 
       const db = this.getDb();
@@ -171,15 +238,21 @@ export class FlashcardRepository extends FirebaseAdmin {
       const deck = await query.get();
 
       if (!deck.exists) {
-        throw new Error("DECK_NOT_FOUND");
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
       }
 
       if (deck.data()?.is_deleted) {
-        throw new Error("DECK_DELETED");
+        const error = new Error("Deck has been deleted");
+        error.name = "DECK_DELETED";
+        throw error;
       }
 
       if (deck.data()?.owner_id !== userID) {
-        throw new Error("UNAUTHORIZED_USER");
+        const error = new Error("User is not authorized to create flashcards in this deck");
+        error.name = "UNAUTHORIZED_USER";
+        throw error;
       }
 
       const flashcard = await query.collection("flashcards").add(flashcardData);
@@ -195,11 +268,23 @@ export class FlashcardRepository extends FirebaseAdmin {
         newFlashcard,
       };
     } catch (error) {
-      console.error("Error creating flashcard :", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "DECK_NOT_FOUND" ||
+            error.name === "INVALID_DECK_ID" ||
+            error.name === "SPECIFIC_FLASHCARD_NOT_FOUND" ||
+            error.name === "INVALID_USER_ID" ||
+            error.name === "INVALID_FLASHCARD_DATA" ||
+            error.name === "UNAUTHORIZED_USER" ||
+            error.name === "DECK_DELETED") {
+          throw error;
+        }
+        const internalError = new Error("An unknown error occurred while creating the flashcards");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("CREATE_FLASHCARD_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while creating the flashcards");
+        unknownError.name = "CREATE_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }
@@ -210,50 +295,64 @@ export class FlashcardRepository extends FirebaseAdmin {
   * @async
   * @function updateFlashcard
   * @param {string} userID - The ID of the one who owns the deck.
-  * @param {string} deckId - The unique identifier of the deck to update.
+  * @param {string} deckID - The unique identifier of the deck to update.
   * @param {string} flashcardID - The UID of the specific flashcard.
   * @param {Object} data - The key-value pairs representing the fields to update.
   * @return {Promise<object>} - Resolves if the update is successful.
   * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
   */
-  public async updateFlashcard(userID: string, deckId: string, flashcardID: string, data: object): Promise<object> {
+  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, data: object): Promise<object> {
     try {
       // Validate inputs
-      if (!deckId || typeof deckId !== "string") {
-        throw new Error("INVALID_DECK_ID");
+      if (!deckID || typeof deckID !== "string") {
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
       }
 
       if (!flashcardID || typeof flashcardID !== "string") {
-        throw new Error("INVALID_FLASHCARD_ID");
+        const error = new Error("Flashcard ID is not a valid flashcard ID. Flashcard ID is must be a string");
+        error.name = "INVALID_FLASHCARD_ID";
+        throw error;
       }
 
       if (!data || typeof data !== "object" || Array.isArray(data)) {
-        throw new Error("INVALID_UPDATE_DATA");
+        const error = new Error("Update data is not a valid object. Update data must be an object");
+        error.name = "INVALID_UPDATE_DATA";
+        throw error;
       }
 
       const db = this.getDb();
 
-      const deckRef = db.collection("decks").doc(deckId);
+      const deckRef = db.collection("decks").doc(deckID);
       const deck = await deckRef.get();
 
       if (!deck.exists) {
-        throw new Error("DECK_NOT_FOUND");
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
       }
 
       if (deck.data()?.is_deleted) {
-        throw new Error("DECK_DELETED");
+        const error = new Error("Deck has been deleted");
+        error.name = "DECK_DELETED";
+        throw error;
       }
 
       if (deck.data()?.owner_id !== userID) {
         // TODO: check if the user id has a role of moderator
-        throw new Error("UNAUTHORIZED_USER");
+        const error = new Error("User is not authorized to create flashcards in this deck");
+        error.name = "UNAUTHORIZED_USER";
+        throw error;
       }
 
       const flashcardRef = deckRef.collection("flashcards").doc(flashcardID);
       const flashcardSnap = await flashcardRef.get();
 
       if (!flashcardSnap.exists) {
-        throw new Error("FLASHCARD_NOT_FOUND");
+        const error = new Error(`Flashcard ${flashcardID} does not exist`);
+        error.name = "FLASHCARD_NOT_FOUND";
+        throw error;
       }
 
       const previousData = flashcardSnap.data();
@@ -276,7 +375,9 @@ export class FlashcardRepository extends FirebaseAdmin {
       const updatedFlashcard = await flashcardRef.get();
 
       if (!updatedFlashcard.exists) {
-        throw new Error("DECK_NOT_FOUND_AFTER_UPDATE");
+        const error = new Error(`Flashcard ${flashcardID} does not exist after update`);
+        error.name = "DECK_NOT_FOUND_AFTER_UPDATE";
+        throw error;
       }
 
       const flashcard = updatedFlashcard ? {id: flashcardID, ...updatedFlashcard.data()} : null;
@@ -285,11 +386,24 @@ export class FlashcardRepository extends FirebaseAdmin {
         flashcard,
       };
     } catch (error) {
-      console.error("Error updating flashcard:", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "INVALID_DECK_ID" ||
+            error.name === "INVALID_FLASHCARD_ID" ||
+            error.name === "INVALID_UPDATE_DATA" ||
+            error.name === "DECK_NOT_FOUND" ||
+            error.name === "DECK_DELETED" ||
+            error.name === "UNAUTHORIZED_USER" ||
+            error.name === "FLASHCARD_NOT_FOUND" ||
+            error.name === "DECK_NOT_FOUND_AFTER_UPDATE") {
+          throw error;
+        }
+        const internalError = new Error("An unknown error occurred while updating the flashcard");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("UPDATE_FLASHCARD_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while updating the flashcard");
+        unknownError.name = "UPDATE_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }
@@ -310,10 +424,14 @@ export class FlashcardRepository extends FirebaseAdmin {
     try {
       // Validate input
       if (!deckID || typeof deckID !== "string") {
-        throw new Error("INVALID_DECK_ID");
+        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
+        error.name = "INVALID_DECK_ID";
+        throw error;
       }
       if (!Array.isArray(flashcardIDs) || flashcardIDs.length === 0) {
-        throw new Error("INVALID_FLASHCARD_IDS");
+        const error = new Error("Flashcard IDs must be a non-empty array of strings");
+        error.name = "INVALID_FLASHCARD_IDS";
+        throw error;
       }
 
       const db = this.getDb();
@@ -322,11 +440,15 @@ export class FlashcardRepository extends FirebaseAdmin {
       // Check if deck exists before deleting
       const deckSnapshot = await deckRef.get();
       if (!deckSnapshot.exists) {
-        throw new Error("DECK_NOT_FOUND");
+        const error = new Error(`Deck ${deckID} does not exist`);
+        error.name = "DECK_NOT_FOUND";
+        throw error;
       }
 
       if (deckSnapshot.data()?.owner_id !== userID) {
-        throw new Error("UNAUTHORIZED_USER");
+        const error = new Error("User is not authorized to create flashcards in this deck");
+        error.name = "UNAUTHORIZED_USER";
+        throw error;
       }
 
       const batch = db.batch();
@@ -352,11 +474,20 @@ export class FlashcardRepository extends FirebaseAdmin {
         await deckRef.update({flashcard_count: Math.max(newFlashcardCount, 0)});
       }
     } catch (error) {
-      console.error("Error deleting flashcards:", error);
       if (error instanceof Error) {
-        throw new Error(error.message);
+        if (error.name === "INVALID_DECK_ID" ||
+            error.name === "INVALID_FLASHCARD_IDS" ||
+            error.name === "DECK_NOT_FOUND" ||
+            error.name === "UNAUTHORIZED_USER") {
+          throw error;
+        }
+        const internalError = new Error("An unknown error occurred while deleting the flashcard");
+        internalError.name = "INTERNAL_SERVER_ERROR";
+        throw internalError;
       } else {
-        throw new Error("DELETE_FLASHCARDS_UNKNOWN_ERROR");
+        const unknownError = new Error("An unknown error occurred while deleting the flashcard");
+        unknownError.name = "DELETE_FLASHCARDS_UNKNOWN_ERROR";
+        throw unknownError;
       }
     }
   }

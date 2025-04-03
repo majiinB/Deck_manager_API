@@ -35,11 +35,7 @@ export class FlashcardService {
       const flashcards = await this.flashcardRepository.getFlashcards(deckID, limit, nextPageToken);
       return flashcards;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-      } else {
-        console.log("An unknown error occurred");
-      }
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -55,12 +51,16 @@ export class FlashcardService {
 
       // Ensure that flashcardsData is actually an object and has the flashcards property.
       if (!flashcardsData || !flashcardsData.flashcards || !Array.isArray(flashcardsData.flashcards)) {
-        return {error: "No flashcards found for this deck."}; // Edge case 5:  No flashcards or invalid format
+        const error = new Error("Invalid flashcards data format.");
+        error.name = "INVALID_FLASHCARD_DATA_FORMAT";
+        throw error;
       }
       const flashcards = flashcardsData.flashcards;
 
       if (flashcards.length < 5) {
-        return {error: "Not enough flashcards to randomize and select."}; // Edge case 7
+        const error = new Error("Not enough flashcards to randomize and select.");
+        error.name = "NOT_ENOUGH_FLASHCARDS";
+        throw error;
       }
 
       // 2. Fischer-Yates Shuffle
@@ -75,17 +75,15 @@ export class FlashcardService {
       }
 
       if (numToReturn > shuffledFlashcards.length) {
-        return {error: "Requested number of flashcards exceeds available cards."}; // Edge case 6
+        const error = new Error("Requested number of flashcards exceeds available cards.");
+        error.name = "EXCEEDS_AVAILABLE_CARDS";
+        throw error;
       }
 
       const selectedFlashcards = shuffledFlashcards.slice(0, numToReturn);
       return {flashcards: selectedFlashcards}; // consistent return format
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-      } else {
-        console.log("An unknown error occurred");
-      }
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -100,11 +98,7 @@ export class FlashcardService {
       const decks = await this.flashcardRepository.getSpecificFlashcard(deckID, flashcardID);
       return decks;
     } catch (error) {
-      if (error instanceof Error) {
-        console.log(error.message);
-      } else {
-        console.log("An unknown error occurred");
-      }
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -116,7 +110,7 @@ export class FlashcardService {
   * @param {string} definition - The cover photo url of the uploaded jpeg.
   * @return {Promise<object>} A promise resolving to the owner's deck data.
   */
-  public async createFlashcard(userID: string, deckID:string, term: string, definition: string): Promise<object> {
+  public async createFlashcard(userID: string, deckID:string, term: string, definition: string): Promise<object | void> {
     try {
       const flashcard = {
         term: term,
@@ -129,8 +123,7 @@ export class FlashcardService {
       const newFlashcard = await this.flashcardRepository.createFlashcard(userID, deckID, flashcard);
       return newFlashcard;
     } catch (error) {
-      console.error("Error creating flashcard:", error);
-      throw new Error(error instanceof Error ? error.message : "CREATE_FLASHCARD_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -142,13 +135,12 @@ export class FlashcardService {
    * @param {object} updateData - The title of the created deck.
    * @return {Promise<object>} A promise resolving to the owner's deck data.
    */
-  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, updateData: object): Promise<object> {
+  public async updateFlashcard(userID: string, deckID: string, flashcardID: string, updateData: object): Promise<object | void> {
     try {
       const updatedFlashcard = await this.flashcardRepository.updateFlashcard(userID, deckID, flashcardID, updateData);
       return updatedFlashcard;
     } catch (error) {
-      console.error("Error updating flashcard:", error);
-      throw new Error(error instanceof Error ? error.message : "UPDATE_FLASHCARD_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
 
@@ -163,8 +155,7 @@ export class FlashcardService {
     try {
       await this.flashcardRepository.deleteFlashcards(userID, deckID, flashcardIDs);
     } catch (error) {
-      console.error("Error deleting deck:", error);
-      throw new Error(error instanceof Error ? error.message : "DELETE_DECK_UNKNOWN_ERROR");
+      if (error instanceof Error) throw error;
     }
   }
 }
