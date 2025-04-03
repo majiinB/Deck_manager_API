@@ -209,4 +209,4 @@ If you have any questions or suggestions, feel free to [open an issue](#).
 
 ---
 
-Thank you for using Deck API Gateway! We hope it helps streamline your productivity workflows and enhances your "Deck" application experience. 🎉
+Thank you for using Deck Manager API! We hope it helps streamline your productivity workflows and enhances your "Deck" application experience. 🎉
