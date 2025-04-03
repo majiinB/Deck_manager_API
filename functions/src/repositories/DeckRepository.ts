@@ -80,7 +80,7 @@ export class DeckRepository extends FirebaseAdmin {
     } catch (error) {
       if (error instanceof Error) {
         const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occurred while fetching the decks");
@@ -135,7 +135,7 @@ export class DeckRepository extends FirebaseAdmin {
     } catch (error) {
       if (error instanceof Error) {
         const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occured while fetching the decks");
@@ -187,7 +187,7 @@ export class DeckRepository extends FirebaseAdmin {
           throw error;
         }
         const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_FETCH_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occured while fetching the decks");
@@ -227,7 +227,7 @@ export class DeckRepository extends FirebaseAdmin {
           throw error;
         }
         const internalError = new Error("An error occured while creating the deck");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_CREATE_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occured while creating the deck");
@@ -299,16 +299,16 @@ export class DeckRepository extends FirebaseAdmin {
       };
     } catch (error) {
       if (error instanceof Error) {
-        if (error.name === "INVALID_DECK_ID" ||
-            error.name === "DECK_NOT_FOUND" ||
-            error.name === "INVALID_UPDATE_DATA" ||
-            error.name === "NOT_AUTHORIZED_TO_UPDATE_DECK" ||
-            error.name === "DECK_NOT_FOUND_AFTER_UPDATE" ||
-            error.name === "DECK_NOT_FOUND") {
+        const knownErrors = [
+          "INVALID_DECK_ID", "INVALID_UPDATE_DATA", "DECK_NOT_FOUND",
+          "NOT_AUTHORIZED_TO_UPDATE_DECK", "DECK_GONE_AFTER_UPDATE",
+        ];
+
+        if (knownErrors.includes(error.name)) {
           throw error;
         }
         const internalError = new Error("An error occured while updating the deck");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_UPDATE_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occured while updating the deck");
@@ -368,8 +368,13 @@ export class DeckRepository extends FirebaseAdmin {
         if (error.name === "INVALID_DECK_IDS") {
           throw error;
         }
+        if (error.message.includes("One or more errors occurred")) {
+          const partialFailureError = new Error(error.message);
+          partialFailureError.name = "PARTIAL_DELETE_FAILURE";
+          throw partialFailureError;
+        }
         const internalError = new Error("An error occured while deleting the decks");
-        internalError.name = "INTERNAL_SERVER_ERROR";
+        internalError.name = "DATABASE_DELETE_ERROR";
         throw internalError;
       } else {
         const unknownError = new Error("An unknown error occured while fetching the decks");
