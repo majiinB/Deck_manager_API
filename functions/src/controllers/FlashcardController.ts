@@ -1,28 +1,28 @@
-
-
 /**
  * Deck Manager API - Flashcard Controller
  *
  * @file FlashcardController.ts
- * This module defines the controller for managing flashcards in the Deck Manager API.
- * It provides methods for CRUD operations on flashcards, including retrieval, creation,
- * updating, and deletion of flashcards within a specific deck.
+ * This module defines the controller for managing flashcard operations.
+ * It handles incoming HTTP requests, interacts with the FlashcardService
+ * to perform business logic, and sends back appropriate responses.
+ * This includes endpoints for retrieving, creating, updating, and deleting flashcards.
+ * It also manages request validation and error handling
  *
- * Endpoints Handled:
- * - GET api/v1/decks/:deckID/flashcards: Retrieves all flashcards from a specific deck.
- * - GET api/v1/decks/:deckID/flashcards/random: Retrieves a randomized selection of flashcards from a specific deck.
- * - GET api/v1/decks/:deckID/flashcards/:flashcardID: Retrieves a specific flashcard by its ID.
- * - POST api/v1/decks/:deckID/flashcards: Adds a new flashcard to a specific deck.
- * - PUT api/v1/decks/:deckID/flashcards/:flashcardID: Updates a specific flashcard by its ID.
- * - DELETE api/v1/decks/:deckID/flashcards/:flashcardID: Deletes a specific flashcard by its ID.
+ *  Methods:
+ * - getFlashcards: Retrieves all flashcards from a specific deck (paginated).
+ * - getRandomFlashcards: Retrieves a specified number of random flashcards from a deck.
+ * - getSpecificFlashcard: Retrieves a specific flashcard by its ID.
+ * - createFlashcard: Adds a new flashcard to a specific deck.
+ * - updateFlashcard: Updates a specific flashcard by its ID.
+ * - deleteFlashcard: Deletes one or more flashcards from a specific deck.
  *
  * @module FlashcardController
  * @file FlashcardController.ts
  * @class FlashcardController
- * @classdesc Handles flashcard-related operations for the Deck Manager API.
+ * @classdesc Handles flashcard-related HTTP requests and delegates to FlashcardService for business logic.
  * @author Arthur M. Artugue
- * @created 2024-03-27
- * @updated 2025-03-29
+ * @created 2024-03-30
+ * @updated 2025-04-03
  */
 
 import {Request, Response} from "express";

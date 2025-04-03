@@ -1,3 +1,32 @@
+/**
+ * Flashcard Service API - Service Layer
+ *
+ * @file FlashcardService.ts
+ * This module defines the service layer for managing flashcard operations.
+ * It acts as an intermediary between the controller and the repository,
+ * providing business logic for flashcard-related functionalities.
+ * This includes retrieving flashcards (paginated, random, or specific),
+ * creating, updating, and deleting flashcards.
+ * It utilizes the FlashcardRepository for data access and handles
+ * error management and data manipulation.
+ *
+ * Methods:
+ * - getFlashcards: Retrieves a list of flashcards for a specific deck, supporting pagination.
+ * - getRandomFlashcards: Retrieves a specified number of random flashcards from a deck.
+ * - getSpecificFlashcard: Retrieves a specific flashcard by its ID from a deck.
+ * - createFlashcard: Creates a new flashcard in a specified deck.
+ * - updateFlashcard: Updates an existing flashcard in a specified deck.
+ * - deleteFlashcard: Deletes one or more flashcards from a specified deck.
+ *
+ * @module service
+ * @file FlashcardService.ts
+ * @class FlashcardService
+ * @classdesc Provides business logic for flashcard operations, utilizing FlashcardRepository for data access.
+ * @author Arthur M. Artugue
+ * @created 2024-03-30
+ * @updated 2025-04-03
+ */
+
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {FlashcardRepository} from "../repositories/FlashcardRepository";
 import {Utils} from "../utils/utils";
