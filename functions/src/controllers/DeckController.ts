@@ -71,7 +71,7 @@ export class DeckController {
 
       if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
-        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
+        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50");
 
         baseResponse.setStatus(400);
         baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
@@ -127,7 +127,7 @@ export class DeckController {
 
       if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
-        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1.");
+        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.");
 
         baseResponse.setStatus(400);
         baseResponse.setMessage("An error has occured during the retrieval of decks");
