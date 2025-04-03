@@ -1,3 +1,30 @@
+/**
+ * Deck Manager API - Repository
+ *
+ * @file DeckRepository.ts
+ * This module defines the repository layer for managing deck data within Firestore.
+ * Extending FirebaseAdmin, it provides specialized methods for interacting with the
+ * 'decks' collection, handling data retrieval (with filtering and pagination),
+ * creation, updates, and deletion operations directly against the database.
+ * It encapsulates Firestore query logic and translates database results/errors.
+ *
+ * Methods:
+ * - getOwnerDecks: Queries Firestore for decks owned by a specific user, supporting pagination.
+ * - getPublicDecks: Queries Firestore for public decks (is_private=false), supporting pagination.
+ * - getSpecificDeck: Retrieves a single deck document from Firestore by its ID.
+ * - createDeck: Adds a new deck document to the Firestore 'decks' collection.
+ * - updateDeck: Updates fields of an existing deck document in Firestore, performing owner checks.
+ * - deleteDecks: Deletes one or more deck documents from Firestore after performing owner checks.
+ *
+ * @module repository
+ * @file DeckRepository.ts
+ * @class DeckRepository
+ * @classdesc Provides data access methods for the 'decks' collection in Firestore, extending FirebaseAdmin for database connectivity.
+ * @author Arthur M. Artugue
+ * @created 2024-03-30
+ * @updated 2025-04-03
+ */
+
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 
 /**
@@ -8,11 +35,14 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
  */
 export class DeckRepository extends FirebaseAdmin {
   /**
-   * Retrieves a list of decks owned by a certain user with pagination support.
-   * @param {string} [userID] - The ID of the one who owns the deck.
-   * @param {number} limit - The maximum number of decks to retrieve.
-   * @param {string} [nextPageToken=null] - The token for the next page of results.
-   * @return {Promise<any[]>} A promise that resolves to an array of decks.
+   * Retrieves a paginated list of non-deleted decks owned by a specific user from Firestore.
+   * Orders decks by title.
+   *
+   * @param {string} userID - The ID of the user whose decks to fetch.
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @param {string | null} [nextPageToken=null] - The document ID to start after for pagination.
+   * @return {Promise<any[]>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., INTERNAL_SERVER_ERROR) on failure.
    */
   public async getOwnerDecks(userID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
     try {
@@ -61,10 +91,13 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a list of published decks with pagination support.
-   * @param {number} limit - The maximum number of decks to retrieve.
-   * @param {string} [nextPageToken=null] - The token for the next page of results.
-   * @return {Promise<any[]>} A promise that resolves to an array of decks.
+   * Retrieves a paginated list of public, non-deleted decks from Firestore.
+   * Orders decks by title.
+   *
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @param {string | null} [nextPageToken=null] - The document ID to start after for pagination.
+   * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
    */
   public async getPublicDecks(limit: number, nextPageToken: string | null = null): Promise<object> {
     try {
@@ -113,10 +146,11 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a specific deck owned by a certain user.
-   * @async
-   * @param {string} deckID - The deck's UID.
-   * @return {Promise<object>} A promise that resolves to an array of decks.
+   * Retrieves a specific deck document by its ID from Firestore.
+   *
+   * @param {string} deckID - The unique identifier of the deck to retrieve.
+   * @return {Promise<SpecificDeckResponse>} A promise resolving to an object containing the deck data (or null if not found).
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, DECK_NOT_FOUND, DATABASE_FETCH_ERROR) on failure or invalid input.
    */
   public async getSpecificDeck(deckID: string): Promise<object> {
     try {
@@ -164,19 +198,12 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-  * Creates a new deck in the Firestore database.
-  *
-  * @async
-  * @function createDeck
-  * @param {Object} deckData - The data for the new deck.
-  * @param {boolean} deckData.is_deleted - Whether the deck is deleted (soft delete flag).
-  * @param {boolean} deckData.is_private - Whether the deck is private.
-  * @param {string} deckData.title - The cleaned title of the deck.
-  * @param {string} deckData.owner_id - The ID of the deck's owner.
-  * @param {string} [deckData.cover_photo] - (Optional) URL of the deck's cover photo.
-  * @return {Promise<object>} The unique ID of the newly created deck.
-  * @throws {Error} If the input data is invalid or Firestore operation fails.
-  */
+   * Creates a new deck document in the Firestore 'decks' collection.
+   *
+   * @param {object} deckData - The data object for the new deck (should match expected schema).
+   * @return {Promise<object>} A promise resolving to an object containing the new deck's ID and the data used for creation.
+   * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
+   */
   public async createDeck(deckData: object): Promise<object> {
     try {
       // Validate input
@@ -211,16 +238,15 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-  * Updates a deck document in Firestore with the provided data.
-  *
-  * @async
-  * @function updateDeck
-  * @param {string} [userID] - The ID of the one who owns the deck.
-  * @param {string} deckId - The unique identifier of the deck to update.
-  * @param {Object} data - The key-value pairs representing the fields to update.
-  * @return {Promise<object>} - Resolves if the update is successful.
-  * @throws {Error} - Throws an error if the deck ID is invalid, the update data is not an object, or the update operation fails.
-  */
+   * Updates an existing deck document in Firestore.
+   * Verifies that the deck exists and the requesting user is the owner before updating.
+   *
+   * @param {string} userID - The ID of the user requesting the update (for authorization).
+   * @param {string} deckId - The unique identifier of the deck to update.
+   * @param {object} data - An object containing the fields and values to update.
+   * @return {Promise<object>} A promise resolving to an object containing the updated deck's ID and its data after the update.
+   * @throws {Error} Throws custom errors (INVALID_DECK_ID, INVALID_UPDATE_DATA, DECK_NOT_FOUND, NOT_AUTHORIZED_TO_UPDATE_DECK, DATABASE_UPDATE_ERROR) on failure or invalid input/permissions.
+   */
   public async updateDeck(userID: string, deckId: string, data: object): Promise<object> {
     try {
       // Validate inputs
@@ -293,15 +319,15 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-  * Deletes a deck in the Firestore database.
-  *
-  * @async
-  * @function deleteDecks
-  * @param {string} [userID] - The ID of the one who owns the deck.
-  * @param {string[]} deckIDs - The UID of the decks to be deleted.
-  * @return {Promise<void>} The unique ID of the newly created deck.
-  * @throws {Error} If the input data is invalid or Firestore operation fails.
-  */
+   * Deletes one or more deck documents from Firestore.
+   * Performs checks to ensure the deck exists and the requesting user is the owner before deletion.
+   * Skips deletion if checks fail for a specific ID and logs a warning.
+   *
+   * @param {string} userID - The ID of the user requesting the deletion (for authorization).
+   * @param {string[]} deckIDs - An array of unique identifiers of the decks to delete.
+   * @return {Promise<void>} A promise that resolves when all valid and authorized deletion attempts are complete.
+   * @throws {Error} Throws custom errors (INVALID_DECK_IDS, DATABASE_DELETE_ERROR) on failure or invalid input. Does not throw for individual skipped decks.
+   */
   public async deleteDecks(userID: string, deckIDs: string[]): Promise<void> {
     try {
       // Validate input
