@@ -1,3 +1,29 @@
+/**
+ * Deck Manager API - Service
+ *
+ * @file DeckService.ts
+ * This module defines the service layer for managing deck-related operations.
+ * It encapsulates the business logic for decks, interacts with the DeckRepository
+ * for data persistence, utilizes utility functions for data cleaning (like Utils.cleanTitle),
+ * and prepares data structures for creation or retrieval (e.g., setting defaults, timestamps).
+ *
+ * Methods:
+ * - getOwnerDeck: Retrieves paginated decks owned by a specific user via the repository.
+ * - getPublicDecks: Retrieves paginated public (non-private) decks via the repository.
+ * - getSpecificDeck: Retrieves details for a single deck by its ID via the repository.
+ * - createDeck: Constructs a new deck object with defaults (privacy, cover photo, timestamp) and requests its creation via the repository.
+ * - updateDeck: Passes update data for a specific deck to the repository.
+ * - deleteDeck: Requests the hard deletion of one or more decks by their IDs via the repository.
+ *
+ * @module service
+ * @file DeckService.ts
+ * @class DeckService
+ * @classdesc Handles business logic and data orchestration for deck operations, acting as an intermediary between the controller and the repository.
+ * @author Arthur M. Artugue
+ * @created 2024-03-27
+ * @updated 2025-04-03
+ */
+
 import {DeckRepository} from "../repositories/DeckRepository";
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Utils} from "../utils/utils";
@@ -24,41 +50,49 @@ export class DeckService {
   }
 
   /**
-   * Retrieves the deck owned by the current user.
-   * @param {string} [userID] - The ID of the one who owns the deck.
-   * @param {number} limit - The maximum number of decks to retrieve.
-   * @param {string | null} nextPageToken - The token for the next page of results, or null for the first page.
-   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   * Retrieves decks owned by the specified user with pagination.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user whose decks are to be retrieved.
+   * @param {number} limit - The maximum number of decks to retrieve per page.
+   * @param {string | null} nextPageToken - Token for fetching the next page of results, or null for the first page.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
    */
   public async getOwnerDeck(userID: string, limit: number, nextPageToken: string | null): Promise<object | void> {
     try {
       const decks = await this.deckRepository.getOwnerDecks(userID, limit, nextPageToken);
       return decks;
     } catch (error) {
-      if (error instanceof Error) throw error.message;
+      if (error instanceof Error) throw error;
     }
   }
 
   /**
-   * Retrieves the all public deck.
+   * Retrieves public decks with pagination.
+   * Delegates the retrieval logic to the deck repository.
    *
-   * @param {number} limit - The maximum number of decks to retrieve.
-   * @param {string | null} nextPageToken - The token for the next page of results, or null for the first page.
-   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   * @param {number} limit - The maximum number of decks to retrieve per page.
+   * @param {string | null} nextPageToken - Token for fetching the next page of results, or null for the first page.
+   * @return {Promise<object | void>} A promise resolving to the paginated public deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
    */
   public async getPublicDecks(limit: number, nextPageToken: string | null): Promise<object | void> {
     try {
       const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
       return decks;
     } catch (error) {
-      if (error instanceof Error) throw error.message;
+      if (error instanceof Error) throw error;
     }
   }
 
   /**
-   * Retrieves a specific deck.
-   * @param {string} deckID - The UID of the specific flashcard.
-   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   * Retrieves a specific deck by its ID.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} deckID - The unique identifier of the deck to retrieve.
+   * @return {Promise<object | void>} A promise resolving to the specific deck data object from the repository, or void/throws if not found or on error.
+   * @throws Will re-throw errors encountered (e.g., deck not found, repository access error).
    */
   public async getSpecificDeck(deckID:string): Promise<object | void> {
     try {
@@ -70,12 +104,15 @@ export class DeckService {
   }
 
   /**
-   * Creates a deck entity
-   * @param {string} deckTitle - The title of the created deck.
-   * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
-   * @param {string | null} coverPhoto - The cover photo url of the uploaded jpeg.
-   * @param {string} description - The description of the created deck.
-   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   * Creates a new deck entity with default values and cleaned data.
+   * Constructs the deck data object and delegates persistence to the repository.
+   *
+   * @param {string} deckTitle - The title for the new deck.
+   * @param {string} userID - The ID of the user creating the deck (owner).
+   * @param {string | null} [coverPhoto=null] - Optional URL for the deck's cover photo. Defaults to a standard image if null.
+   * @param {string} description - The description for the new deck.
+   * @return {Promise<object | void>} A promise resolving to the created deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access or data processing.
    */
   public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null, description: string): Promise<object | void> {
     try {
@@ -99,11 +136,15 @@ export class DeckService {
   }
 
   /**
-   * Updates a specific deck.
-   * @param {string} userID - The ID of the one who owns and requested for the creation of deck.
-   * @param {string} deckID - The UID of the deck to be updated.
-   * @param {object} updateData - The title of the created deck.
-   * @return {Promise<object>} A promise resolving to the owner's deck data.
+   * Updates an existing deck with the provided data.
+   * Delegates the update logic directly to the deck repository.
+   * Assumes updateData contains validated fields mapped to repository schema.
+   *
+   * @param {string} userID - The ID of the user requesting the update (for ownership verification in repository).
+   * @param {string} deckID - The unique identifier of the deck to update.
+   * @param {object} updateData - An object containing the fields to update (e.g., { title: 'New Title', is_private: false }).
+   * @return {Promise<object | void>} A promise resolving to the updated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered (e.g., deck not found, permission denied, repository access error).
    */
   public async updateDeck(userID: string, deckID: string, updateData: object): Promise<object | void> {
     try {
