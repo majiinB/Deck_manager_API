@@ -3,26 +3,24 @@
  * Deck - Firebase Admin Configuration
  * @file firebaseAdmin.ts
  * @description This module initializes Firebase Admin SDK using a service
- * account and provides middleware for verifying Firebase authentication
- * tokens in API requests.
+ * account and provides methods for accessing Firebase services.
  *
  * Initialization:
- * - Reads service account credentials from an environment-specified JSON
- *   file.
- * - Configures Firebase Admin SDK with the credentials to enable
- *   authentication services.
+ * - Initializes Firebase Admin SDK if not already initialized.
+ *
+ * Methods:
+ * - getDb: Retrieves the Firestore database instance.
+ * - getAuth: Retrieves the Firebase Admin auth instance.
+ * - getTimeStamp: Retrieves the current timestamp using Firebase Admin's Firestore Timestamp.
  *
  * External Dependencies:
  * - firebase-admin: Firebase Admin SDK for server-side authentication.
- * - fs: Reads the service account JSON file.
- *
- * Environment Variables:
- * - DECK_SERVICE_ACCOUNT_PATH: Path to the Firebase service account JSON file.
  *
  * @author Arthur M. Artugue
  * @created 2025-03-26
  * @updated 2025-03-28
  */
+
 import admin from "firebase-admin";
 import {Timestamp} from "firebase-admin/firestore";
 
