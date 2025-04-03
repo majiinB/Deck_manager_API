@@ -1,4 +1,20 @@
-
+/**
+ * Base Response Model for API Responses
+ *
+ * @file BaseResponse.ts
+ * This module defines a generic class `BaseResponse` that represents a standard structure for API responses.
+ * It includes properties for the response status, message, and an optional data payload.
+ * This class is designed to provide a consistent format for API responses across the application.
+ *
+ * @module models
+ * @file BaseResponse.ts
+ * @class BaseResponse<T>
+ * @classdesc Represents a base response structure for API responses.
+ * @template T - The type of the data payload included in the response.
+ * @author Arthur M. Artugue
+ * @created 2025-03-30
+ * @updated 2025-04-04
+ */
 
 /**
  * Represents a base response structure for API responses.

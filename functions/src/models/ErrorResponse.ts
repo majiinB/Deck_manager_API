@@ -1,4 +1,21 @@
 /**
+ * Error Response Model for API Error Responses
+ *
+ * @file ErrorResponse.ts
+ * This module defines a class `ErrorResponse` that represents a standard structure for API error responses.
+ * It includes properties for the error code and message.
+ * This class is designed to provide a consistent format for error responses across the application.
+ *
+ * @module models
+ * @file ErrorResponse.ts
+ * @class ErrorResponse
+ * @classdesc Represents a base error response structure for API responses.
+ * @author Arthur M. Artugue
+ * @created 2025-03-30
+ * @updated 2025-04-04
+ */
+
+/**
  * Represents a base response structure for API responses.
  *
  * @template T - The type of the data payload included in the response.
