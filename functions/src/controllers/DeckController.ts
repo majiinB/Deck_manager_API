@@ -21,9 +21,9 @@
  * @file DeckController.ts
  * @class DeckController
  * @classdesc Handles HTTP request routing and processing for deck-related operations, coordinating with the DeckService.
- * @author Arthur M. Artugue // As per your example, replace if needed
- * @created 2024-03-27 // As per your example, adjust if needed
- * @updated 2025-04-03 // As per your example, adjust or use current date
+ * @author Arthur M. Artugue
+ * @created 2024-03-27
+ * @updated 2025-04-03
  */
 import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
