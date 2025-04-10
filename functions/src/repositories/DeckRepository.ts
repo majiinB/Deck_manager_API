@@ -217,9 +217,10 @@ export class DeckRepository extends FirebaseAdmin {
 
       const res = await db.collection("decks").add(deckData);
 
+      const deck = res ? {id: res.id, ...deckData} : null;
+
       return {
-        id: res.id,
-        fields: deckData,
+        deck,
       };
     } catch (error) {
       if (error instanceof Error) {
@@ -293,9 +294,10 @@ export class DeckRepository extends FirebaseAdmin {
         throw error;
       }
 
+      const deck = updatedDeck ? {id: deckId, ...updatedDeck.data} : null;
+
       return {
-        deck_id: deckId,
-        fields: {...updatedDeck.data()},
+        deck,
       };
     } catch (error) {
       if (error instanceof Error) {
