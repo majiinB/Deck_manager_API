@@ -238,91 +238,76 @@ export class FlashcardRepository extends FirebaseAdmin {
   }
 
   /**
-   * Creates a new flashcard document within a specific deck's subcollection in Firestore.
-   * Also increments the 'flashcard_count' field on the parent deck document.
-   * Performs checks for deck existence, deck deletion status, and user authorization.
-   *
-   * @param {string} userID - The ID of the user creating the flashcard (must match deck owner).
-   * @param {string} deckID - The unique identifier of the parent deck.
-   * @param {object} flashcardData - The data object for the new flashcard (should match expected schema, excluding ID).
-   * @return {Promise<object | void>} A promise resolving to an object containing the newly created flashcard data including its ID.
-   * @throws {Error} Throws custom errors (INVALID_DECK_ID, INVALID_USER_ID, INVALID_FLASHCARD_DATA, DECK_NOT_FOUND, DECK_DELETED, UNAUTHORIZED_USER, DATABASE_CREATE_ERROR) on failure or invalid input/permissions.
-   */
-  public async createFlashcard(userID: string, deckID: string, flashcardData: object): Promise<object | void> {
+ * Creates multiple flashcards in a specific deck's subcollection in Firestore.
+ * Also increments the 'flashcard_count' field on the parent deck document.
+ * Performs checks for deck existence, deck deletion status, and user authorization.
+ *
+ * @param {string} userID - The ID of the user creating the flashcards (must match deck owner).
+ * @param {string} deckID - The unique identifier of the parent deck.
+ * @param {object[]} flashcards - Array of flashcard data objects (should match expected schema, excluding ID).
+ * @return {Promise<object[] | void>} A promise resolving to an array of created flashcards with their IDs.
+ * @throws {Error} Throws custom errors on failure or invalid input/permissions.
+ */
+  public async createFlashcards(userID: string, deckID: string, flashcards: object[]): Promise<object[] | void> {
     try {
-      // Validate input
+      // Basic input validations
       if (!deckID || typeof deckID !== "string") {
-        const error = new Error(`Deck ${deckID} is not a valid deck ID. Deck ID is must be a string`);
-        error.name = "INVALID_DECK_ID";
-        throw error;
+        throw Object.assign(new Error(`Deck ${deckID} is not a valid deck ID`), {name: "INVALID_DECK_ID"});
       }
       if (!userID || typeof userID !== "string") {
-        const error = new Error(`User ${userID} is not a valid user ID. User ID is must be a string`);
-        error.name = "INVALID_USER_ID";
-        throw error;
+        throw Object.assign(new Error(`User ${userID} is not a valid user ID`), {name: "INVALID_USER_ID"});
       }
-      if (!flashcardData || typeof flashcardData !== "object") {
-        const error = new Error("Flashcard data is not a valid object. Flashcard data must be an object");
-        error.name = "INVALID_FLASHCARD_DATA";
-        throw error;
+      if (!Array.isArray(flashcards) || flashcards.some((f) => typeof f !== "object")) {
+        throw Object.assign(new Error("Flashcards must be an array of valid objects"), {name: "INVALID_FLASHCARD_DATA"});
       }
 
       const db = this.getDb();
-
       const query = db.collection("decks").doc(deckID);
-      const deck = await query.get();
+      const deckDoc = await query.get();
 
-      if (!deck.exists) {
-        const error = new Error(`Deck ${deckID} does not exist`);
-        error.name = "DECK_NOT_FOUND";
-        throw error;
+      if (!deckDoc.exists) {
+        throw Object.assign(new Error(`Deck ${deckID} does not exist`), {name: "DECK_NOT_FOUND"});
       }
 
-      const deckData = deck.data();
-
+      const deckData = deckDoc.data();
       if (deckData?.is_deleted) {
-        const error = new Error("Deck has been deleted");
-        error.name = "DECK_DELETED";
-        throw error;
+        throw Object.assign(new Error("Deck has been deleted"), {name: "DECK_DELETED"});
       }
 
       if (deckData?.owner_id !== userID) {
-        const error = new Error("User is not authorized to create flashcards in this deck");
-        error.name = "UNAUTHORIZED_USER";
+        throw Object.assign(new Error("User is not authorized to add flashcards to this deck"), {name: "UNAUTHORIZED_USER"});
+      }
+
+      // Add flashcards
+      const flashcardRefs = await Promise.all(
+        flashcards.map((flashcard) =>
+          query.collection("flashcards").add(flashcard)
+        )
+      );
+
+      // Update flashcard count
+      const currentCount = deckData?.flashcards_count ?? 0;
+      const newCount = currentCount + flashcardRefs.length;
+      await query.update({flashcards_count: newCount});
+
+      // Prepare return data
+      const createdFlashcards = flashcardRefs.map((ref, i) => ({
+        id: ref.id,
+        ...flashcards[i],
+      }));
+
+      return createdFlashcards;
+    } catch (error) {
+      const knownErrors = [
+        "INVALID_DECK_ID", "INVALID_USER_ID", "INVALID_FLASHCARD_DATA",
+        "DECK_NOT_FOUND", "DECK_DELETED", "UNAUTHORIZED_USER",
+      ];
+      if (error instanceof Error && knownErrors.includes(error.name)) {
         throw error;
       }
-
-      const newflashcard = await query.collection("flashcards").add(flashcardData);
-
-      if ("flashcards_count" in (deck.data() || {})) {
-        const flashcardsCount = (deck.data()?.flashcards_count ?? 0) + 1;
-        await query.update({flashcards_count: flashcardsCount});
-      }
-
-      const flashcard = newflashcard ? {id: newflashcard.id, ...flashcardData} : null;
-
-      return {
-        flashcard,
-      };
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error instanceof Error) {
-          const knownErrors = [
-            "INVALID_DECK_ID", "INVALID_USER_ID", "INVALID_FLASHCARD_DATA",
-            "DECK_NOT_FOUND", "DECK_DELETED", "UNAUTHORIZED_USER",
-          ];
-          if (knownErrors.includes(error.name)) {
-            throw error;
-          }
-          const internalError = new Error("An unknown error occurred while creating the flashcards");
-          internalError.name = "DATABASE_CREATE_ERROR";
-          throw internalError;
-        } else {
-          const unknownError = new Error("An unknown error occurred while creating the flashcards");
-          unknownError.name = "CREATE_FLASHCARDS_UNKNOWN_ERROR";
-          throw unknownError;
-        }
-      }
+      throw Object.assign(new Error("An unknown error occurred while creating the flashcards"), {
+        name: "DATABASE_CREATE_ERROR",
+      });
     }
   }
 

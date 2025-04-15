@@ -22,7 +22,7 @@
  * @classdesc Handles flashcard-related HTTP requests and delegates to FlashcardService for business logic.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-03
+ * @updated 2025-04-16
  */
 
 import {Request, Response} from "express";
@@ -30,7 +30,7 @@ import {FlashcardService} from "../services/FlashCardService";
 import {BaseResponse} from "../models/BaseResponse";
 import {ErrorResponse} from "../models/ErrorResponse";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
-
+import {createFlashcardSchema} from "../schema/createFlashcardSchema";
 /**
  * Class responsible for initializing and managing the services related to flashcards
  * management.
@@ -220,85 +220,49 @@ export class FlashcardController {
   * @param {Response} res - The HTTP response object.
   * @return {Promise<Response>} A JSON response containing a message indicating the action performed.
   */
-  public async createFlashcard(req: AuthenticatedRequest, res: Response): Promise<void> {
+  public async createFlashcards(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
-      const {term, definition} = req.body;
+      const validation = createFlashcardSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorList = validation.error.errors.map((zodError) => {
+          const field = zodError.path[0];
+          const errorResponse = new ErrorResponse();
+          switch (field) {
+          case "term":
+            errorResponse.setError(
+              zodError.message.includes("type") ? "INVALID_FLASHCARD_TERM_TYPE" : "FLASHCARD_TERM_REQUIRED"
+            );
+            errorResponse.setMessage(zodError.message);
+            break;
+          case "definition":
+            errorResponse.setError(
+              zodError.message.includes("type") ? "INVALID_FLASHCARD_DEFINITION_TYPE" : "FLASHCARD_DEFINITION_REQUIRED"
+            );
+            errorResponse.setMessage(zodError.message);
+            break;
+
+          default:
+            errorResponse.setError("VALIDATION_ERROR");
+            errorResponse.setMessage(zodError.message);
+          }
+
+          return errorResponse;
+        });
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occurred during the creation of the flashcard");
+        baseResponse.setData(errorList);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
+
       const deckID = req.params.deckID;
       const userID = req.user?.user_id;
-
-      // Flashcard term validation
-      if (!term) {
-        errorResponse.setError("FLASHCARD_TERM_REQUIRED");
-        errorResponse.setMessage("flashcard term is a required");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-      if (typeof term !== "string") {
-        errorResponse.setError("INVALID_FLASHCARD_TERM_TYPE");
-        errorResponse.setMessage("The term of the flashcard should be of type string");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-      if (!term?.trim()) {
-        errorResponse.setError("FLASHCARD_TERM_REQUIRED");
-        errorResponse.setMessage("flashcard term is a required");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Flashcard definition validation
-      if (!definition) {
-        errorResponse.setError("FLASHCARD_DEFINITION_REQUIRED");
-        errorResponse.setMessage("flashcard definition is a required");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-      if (typeof definition !== "string") {
-        errorResponse.setError("INVALID_FLASHCARD_DEFINITION_TYPE");
-        errorResponse.setMessage("The definition of the flashcard should be of type string");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-      if (!definition?.trim()) {
-        errorResponse.setError("FLASHCARD_DEFINITION_REQUIRED");
-        errorResponse.setMessage("flashcard definition is a required");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the flashcard");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      const flashcard = await this.flashcardService.createFlashcard(userID, deckID, term, definition);
+      const flashcard = await this.flashcardService.createFlashcards(userID, deckID, validation.data);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Flashcard was successfully created");

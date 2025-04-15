@@ -131,25 +131,28 @@ export class FlashcardService {
     }
   }
 
+
   /**
-  * Creates a flashcard entity
-  * @param {string} userID - The ID of the one who owns the deck.
-  * @param {string} deckID - The title of the created deck.
-  * @param {string} term - The ID of the one who owns and requested for the creation of deck.
-  * @param {string} definition - The cover photo url of the uploaded jpeg.
-  * @return {Promise<object>} A promise resolving to the owner's deck data.
-  */
-  public async createFlashcard(userID: string, deckID:string, term: string, definition: string): Promise<object | void> {
+ * Creates a flashcard entity
+ * @param {string} userID - The ID of the one who owns the deck.
+ * @param {string} deckID - The title of the created deck.
+ * @param {Array<{ term: string, definition: string, is_deleted: boolean, is_starred: boolean, created_at: any }>} flashcards - An array of objects, each containing a term, definition, is_deleted, is_starred, and created_at properties, representing the flashcards to be created.
+ * @return {Promise<object>} A promise resolving to the owner's deck data.
+ */
+  public async createFlashcards(
+    userID: string,
+    deckID: string,
+    flashcards: Array<{ term: string; definition: string }>
+  ): Promise<object | void> {
     try {
-      const flashcard = {
-        term: term,
+      const flashcardsWithMetadata = flashcards.map((flashcard) => ({
+        ...flashcard,
         is_deleted: false,
         is_starred: false,
-        definition: definition,
         created_at: FirebaseAdmin.getTimeStamp(),
-      };
+      }));
 
-      const newFlashcard = await this.flashcardRepository.createFlashcard(userID, deckID, flashcard);
+      const newFlashcard = await this.flashcardRepository.createFlashcards(userID, deckID, flashcardsWithMetadata);
       return newFlashcard;
     } catch (error) {
       if (error instanceof Error) throw error;

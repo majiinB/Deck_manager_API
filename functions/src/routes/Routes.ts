@@ -26,7 +26,7 @@
  * @file Routes.ts
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-03-28
+ * @updated 2025-04-16
  */
 
 import {Router, Request, Response} from "express";
@@ -39,11 +39,9 @@ import {FlashcardRepository} from "../repositories/FlashcardRepository";
 
 // eslint-disable-next-line new-cap
 const router = Router();
-
-const deckService = new DeckService(new DeckRepository);
-const deckController = new DeckController(deckService);
-
 const flashcardService = new FlashcardService(new FlashcardRepository);
+const deckService = new DeckService(new DeckRepository, flashcardService);
+const deckController = new DeckController(deckService);
 const flashcardController = new FlashcardController(flashcardService);
 
 // DECK ROUTES
@@ -184,7 +182,7 @@ router.get("/:deckID/flashcards/:flashcardID", async (req: Request, res: Respons
  * @returns {Error} 500 - Internal server error.
  */
 router.post("/:deckID/flashcards", async (req: Request, res: Response) => {
-  await flashcardController.createFlashcard(req, res);
+  await flashcardController.createFlashcards(req, res);
 });
 
 /**

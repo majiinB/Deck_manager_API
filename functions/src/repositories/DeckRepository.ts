@@ -26,6 +26,7 @@
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
+import {Deck} from "../interface/Deck";
 
 /**
  * The `DeckRepository` class extends the `FirebaseAdmin` class to provide
@@ -201,10 +202,10 @@ export class DeckRepository extends FirebaseAdmin {
    * Creates a new deck document in the Firestore 'decks' collection.
    *
    * @param {object} deckData - The data object for the new deck (should match expected schema).
-   * @return {Promise<object>} A promise resolving to an object containing the new deck's ID and the data used for creation.
+   * @return {Promise<Deck>} A promise resolving to the created deck object, including its ID.
    * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
    */
-  public async createDeck(deckData: object): Promise<object> {
+  public async createDeck(deckData: object): Promise<Deck> {
     try {
       // Validate input
       if (!deckData || typeof deckData !== "object") {
@@ -217,11 +218,9 @@ export class DeckRepository extends FirebaseAdmin {
 
       const res = await db.collection("decks").add(deckData);
 
-      const deck = res ? {id: res.id, ...deckData} : null;
+      const deck: Deck | null = ({id: res.id, ...deckData} as Deck);
 
-      return {
-        deck,
-      };
+      return deck;
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === "INVALID_DECK_DATA") {
