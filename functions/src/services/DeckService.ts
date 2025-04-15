@@ -111,10 +111,11 @@ export class DeckService {
    * @param {string} userID - The ID of the user creating the deck (owner).
    * @param {string | null} [coverPhoto=null] - Optional URL for the deck's cover photo. Defaults to a standard image if null.
    * @param {string} description - The description for the new deck.
+   * @param {Array<object> | null} flashcards - Optional URL for the deck's cover photo. Defaults to a standard image if null.
    * @return {Promise<object | void>} A promise resolving to the created deck data object from the repository, or void/throws on error.
    * @throws Will re-throw errors encountered during repository access or data processing.
    */
-  public async createDeck(deckTitle:string, userID: string, coverPhoto: string | null = null, description: string): Promise<object | void> {
+  public async createDeck(deckTitle: string, userID: string, coverPhoto: string | null = null, description: string, flashcards: Array<object> | undefined): Promise<object | void> {
     try {
       const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
       const deck = {
