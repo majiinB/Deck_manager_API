@@ -147,7 +147,7 @@ export class DeckService {
         await this.flashcardService.createFlashcards(userID, deckID, flashcards);
       }
       return {
-        deck: deck,
+        deck: decks,
       };
     } catch (error) {
       if (error instanceof Error) throw error;

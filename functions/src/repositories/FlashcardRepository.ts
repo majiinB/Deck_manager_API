@@ -286,9 +286,9 @@ export class FlashcardRepository extends FirebaseAdmin {
       );
 
       // Update flashcard count
-      const currentCount = deckData?.flashcards_count ?? 0;
+      const currentCount = deckData?.flashcard_count ?? 0;
       const newCount = currentCount + flashcardRefs.length;
-      await query.update({flashcards_count: newCount});
+      await query.update({flashcard_count: newCount});
 
       // Prepare return data
       const createdFlashcards = flashcardRefs.map((ref, i) => ({
