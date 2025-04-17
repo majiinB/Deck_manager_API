@@ -31,7 +31,7 @@ export const createDeckSchema = object({
   coverPhoto: string({
     invalid_type_error: "The cover photo URL must be of type string",
   }).regex(
-    new RegExp("^https://firebasestorage\\.googleapis\\.com/v0/b/deck-f429c\\.appspot\\.com/o/deckCovers%2F[\\w-]+%2F[\\w-]+\\.(png|jpg|jpeg|webp)\\?alt=media&token=[\\w-]+$"),
+    new RegExp("^https://firebasestorage\\.googleapis\\.com/v0/b/deck-f429c\\.appspot\\.com/o/deckCovers%2F[\\w-]+%2F[\\w-]+(?:\\.(png|jpg|jpeg|webp))?\\?alt=media&token=[\\w-]+$"),
     "The cover photo URL is invalid. It must be a valid Firebase Storage URL for deck covers."
   ).optional(),
   flashcards: array(flashcardSchema).optional(),
