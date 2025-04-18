@@ -12,7 +12,7 @@
  * @file createDeckSchema.ts
  * @author Arthur M. Artugue
  * @created 2024-04-16
- * @updated 2025-04-16
+ * @updated 2025-04-17
  */
 import {object, string, array} from "zod";
 import {flashcardSchema} from "./createFlashcardSchema";

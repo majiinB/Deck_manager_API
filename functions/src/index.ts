@@ -25,12 +25,16 @@
  * @updated 2025-04-02
  */
 import * as functions from "firebase-functions";
+import * as dotenv from "dotenv";
 import express from "express";
 import cors, {CorsOptions} from "cors";
 import deckRoutes from "./routes/Routes";
 import {AuthenticatedRequest} from "./interface/AuthenticatedRequest";
 import {BaseResponse} from "./models/BaseResponse";
 import {AuthenticationService} from "./services/AuthenticationService";
+
+// Load environment variables from .env file
+dotenv.config();
 
 /**
  * Configuration options for CORS (Cross-Origin Resource Sharing).
@@ -57,7 +61,7 @@ import {AuthenticationService} from "./services/AuthenticationService";
 const corsOptions: CorsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
     console.log(`CORS Request from: ${origin}`);
-    const allowedOrigins = ["https://frontend.com"];
+    const allowedOrigins = [process.env.URL_ONE, process.env.URL_TWO];
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true); // Allow request
     } else {

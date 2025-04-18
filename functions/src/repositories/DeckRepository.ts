@@ -27,6 +27,7 @@
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Deck} from "../interface/Deck";
+import {UserRepository} from "./UserRepository";
 
 /**
  * The `DeckRepository` class extends the `FirebaseAdmin` class to provide
@@ -35,6 +36,8 @@ import {Deck} from "../interface/Deck";
  * and the Firebase database, encapsulating operations specific to decks.
  */
 export class DeckRepository extends FirebaseAdmin {
+  userRepository : UserRepository = new UserRepository();
+
   /**
    * Retrieves a paginated list of non-deleted decks owned by a specific user from Firestore.
    * Orders decks by title.
@@ -62,11 +65,18 @@ export class DeckRepository extends FirebaseAdmin {
         }
       }
 
-      const snapshot = await query.get();
+      const ownerMap: Record<string, string> = {};
+
+      const [snapshot, userName] = await Promise.all([
+        query.get(),
+        this.userRepository.getOwnerNames([userID]),
+      ]);
+
 
       // Extract deck data
       const decks = snapshot.docs.map((doc)=> ({
         id: doc.id,
+        owner_name: ownerMap[doc.data().owner_id] || userName[userID],
         ...doc.data(),
       }));
 
@@ -117,11 +127,25 @@ export class DeckRepository extends FirebaseAdmin {
         }
       }
 
+      // Retrieve the query snapshot
       const snapshot = await query.get();
+
+      // Extract unique owner IDs
+      const ownerIds = snapshot.docs.map((doc) => doc.data().owner_id);
+      const ownerMap: Record<string, string> = {};
+
+      // Fetch user names in batches if there are more than 10 ownerIds
+      const batchSize = 10;
+      for (let i = 0; i < ownerIds.length; i += batchSize) {
+        const batchIds = ownerIds.slice(i, i + batchSize);
+        const userNames = await this.userRepository.getOwnerNames(batchIds);
+        Object.assign(ownerMap, userNames);
+      }
 
       // Extract deck data
       const decks = snapshot.docs.map((doc)=> ({
         id: doc.id,
+        owner_name: ownerMap[doc.data().owner_id],
         ...doc.data(),
       }));
 
