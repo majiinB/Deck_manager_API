@@ -200,7 +200,12 @@ export class DeckRepository extends FirebaseAdmin {
 
       // Extract deck data
       const deckData = deckSnap.data();
-      const deck = deckData ? {id: deckSnap.id, ...deckData} : null;
+      const ownerMap = deckData ? await this.userRepository.getOwnerNames([deckData.owner_id]) : {};
+      const deck = deckData ? {
+        id: deckSnap.id,
+        owner_name: ownerMap[deckData.owner_id],
+        ...deckData,
+      } : null;
 
       return {
         deck,
