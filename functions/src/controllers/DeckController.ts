@@ -83,7 +83,7 @@ export class DeckController {
       }
 
       // Get pagination token if provided
-      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
+      const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
       // Call service method
       const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
 

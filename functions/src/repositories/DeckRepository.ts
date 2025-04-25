@@ -247,7 +247,14 @@ export class DeckRepository extends FirebaseAdmin {
 
       const res = await db.collection("decks").add(deckData);
 
-      const deck: Deck | null = ({id: res.id, ...deckData} as Deck);
+      if (!res || !res.id) {
+        const error = new Error("Failed to create deck, no reference returned");
+        error.name = "DATABASE_CREATE_ERROR";
+        throw error;
+      }
+
+      // access newly created deck ID by `res.id`
+      const deck: Deck = ({id: res.id, ...deckData} as Deck);
 
       return deck;
     } catch (error) {
@@ -255,6 +262,10 @@ export class DeckRepository extends FirebaseAdmin {
         if (error.name === "INVALID_DECK_DATA") {
           throw error;
         }
+        if (error.name === "DATABASE_CREATE_ERROR") {
+          throw error;
+        }
+        // Handle other known errors
         const internalError = new Error("An error occured while creating the deck");
         internalError.name = "DATABASE_CREATE_ERROR";
         throw internalError;
