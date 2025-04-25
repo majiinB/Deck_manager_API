@@ -22,7 +22,7 @@
  * @classdesc Provides data access methods for the 'decks' collection in Firestore, extending FirebaseAdmin for database connectivity.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-03
+ * @updated 2025-04-25
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
