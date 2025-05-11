@@ -21,7 +21,7 @@
  * @classdesc Handles business logic and data orchestration for deck operations, acting as an intermediary between the controller and the repository.
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-04-03
+ * @updated 2025-05-11
  */
 
 import {DeckRepository} from "../repositories/DeckRepository";
@@ -159,6 +159,7 @@ export class DeckService extends GeminiConfig {
     try {
       const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
 
+      // Generate embedding for the deck title and description
       const embedRes = await this.embedDeck(`Deck title: ${title}, Description: ${description}`);
       const firstEmbedObj = embedRes.embeddings[0];
       const vector: number[] = firstEmbedObj.values;
