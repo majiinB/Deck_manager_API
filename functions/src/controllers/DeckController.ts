@@ -120,6 +120,60 @@ export class DeckController {
   }
 
   /**
+   * Handles the request to search for decks based on a search query.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async searchDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
+    try {
+      const searchQuery = req.query.searchQuery as string;
+      const limit = 50;
+      const userID = req.user?.user_id;
+
+      // Get pagination token if provided
+      const searchOwnDeck = req.query.searchOwnDeck === "true";
+      // Call service method
+      const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchOwnDeck);
+
+      // Send success response
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Successfuly retrieved decks");
+      baseResponse.setData(decks);
+
+      res.status(200).json(baseResponse);
+    } catch (error) {
+      // Handle errors
+      if (error instanceof Error) {
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      } else {
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in search decks");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
+        return;
+      }
+    }
+  }
+
+  /**
    * Handles the request to fetch all decks that are not private (are published).
    * Validates query parameters (limit) and uses DeckService for retrieval.
    * Responds with paginated public deck data or an error.

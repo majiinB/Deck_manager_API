@@ -29,12 +29,14 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Utils} from "../utils/utils";
 import {Deck} from "../interface/Deck";
 import {FlashcardService} from "../services/FlashCardService";
+import {GeminiConfig} from "../config/GeminiConfig";
+import {FieldValue} from "firebase-admin/firestore";
 
 /**
  * Service class responsible for handling operations related to decks.
  * This class provides methods to manage and manipulate deck data.
  */
-export class DeckService {
+export class DeckService extends GeminiConfig {
   /**
    * A repository instance for managing deck-related data operations.
    * Provides methods to interact with the data source for creating, reading,
@@ -54,6 +56,7 @@ export class DeckService {
    * @param {FlashcardService} flashcardService - The repository handling data operations.
    */
   constructor(deckRepository: DeckRepository, flashcardService: FlashcardService) {
+    super();
     this.deckRepository = deckRepository;
     this.flashcardService = flashcardService;
   }
@@ -113,6 +116,32 @@ export class DeckService {
   }
 
   /**
+   * searches for decks based on a query.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user whose decks are to be retrieved.
+   * @param {string} query - The search query string.
+   * @param {number} limit - The maximum number of decks to retrieve per page.
+   * @param {boolean} searchOwnDeck - Flag indicating whether to search the user's own decks or public decks.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async searchDeck(userID: string, query: string, limit:number, searchOwnDeck: boolean): Promise<object | void> {
+    try {
+      let decks;
+      if (searchOwnDeck) {
+        decks = await this.deckRepository.searchOwnerDecks(userID, query, limit);
+      } else {
+        // decks = await this.deckRepository.searchPublicDecks(limit);
+      }
+
+      return decks;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+    }
+  }
+
+  /**
    * Creates a new deck entity with default values and cleaned data.
    * Constructs the deck data object and delegates persistence to the repository.
    *
@@ -129,6 +158,17 @@ export class DeckService {
   public async createDeck(title: string, userID: string, coverPhoto: string | null = null, description: string, flashcards: Array<{ term: string; definition: string }> | undefined): Promise<object | void> {
     try {
       const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
+
+      const embedRes = await this.embedDeck(`Deck title: ${title}, Description: ${description}`);
+      const firstEmbedObj = embedRes.embeddings[0];
+      const vector: number[] = firstEmbedObj.values;
+
+      if (!embedRes) {
+        const error = new Error("Failed to create deck, failed to generate embedding");
+        error.name = "DATABASE_CREATE_ERROR";
+        throw error;
+      }
+
       const deck: Omit<Deck, "id"> = {
         title: Utils.cleanTitle(title),
         is_deleted: false,
@@ -138,6 +178,7 @@ export class DeckService {
         created_at: FirebaseAdmin.getTimeStamp(),
         description: description,
         flashcard_count: 0,
+        embedding_field: FieldValue.vector(vector),
       };
 
       const decks = await this.deckRepository.createDeck(deck);

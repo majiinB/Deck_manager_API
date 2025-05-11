@@ -18,6 +18,8 @@
  * @updated 2025-04-16
  */
 
+import {FieldValue} from "firebase-admin/firestore";
+
 /**
  * Interface representing a Deck entity.
  * It includes properties such as the deck's unique identifier, title,
@@ -33,4 +35,5 @@ export interface Deck {
   created_at: FirebaseFirestore.Timestamp;
   description: string;
   flashcard_count: number;
+  embedding_field: FieldValue;
 }

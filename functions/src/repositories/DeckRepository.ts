@@ -171,6 +171,66 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
+   * Retrieves a paginated list of decks owned by a specific user from Firestore.
+   * Orders decks by title.
+   *
+   * @param {string} userID - The ID of the user whose decks to fetch.
+   * @param {number} query - The search query to filter decks.
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
+   */
+  public async searchOwnerDecks(userID: string, query: string, limit: number): Promise<any> {
+    // try {
+    //   const db = this.getDb();
+    //   let query = db
+    //     .collection("decks")
+    //     .where("owner_id", "==", userID) // Filter by owner_id
+    //     .where("is_deleted", "==", false) // Filter out deleted decks
+    //     .orderBy("title") // Order results
+    //     .limit(limit); // Limit results
+
+    //   if (nextPageToken) {
+    //     const lastDocSnapShot = await db.collection("decks").doc(nextPageToken).get();
+    //     if (lastDocSnapShot.exists) {
+    //       query = query.startAfter(lastDocSnapShot);
+    //     }
+    //   }
+
+    //   const ownerMap: Record<string, string> = {};
+
+    //   const [snapshot, userName] = await Promise.all([
+    //     query.get(),
+    //     this.userRepository.getOwnerNames([userID]),
+    //   ]);
+
+    //   // Extract deck data
+    //   const decks = snapshot.docs.map((doc)=> ({
+    //     id: doc.id,
+    //     owner_name: ownerMap[doc.data().owner_id] || userName[userID],
+    //     ...doc.data(),
+    //   }));
+    //   // Get nextPageToken (last document ID)
+    //   const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+    //   const nextToken = lastDoc ? lastDoc.id : null;
+    //   return {
+    //     decks,
+    //     nextPageToken: nextToken,
+    //   };
+    // } catch (error) {
+    //   if (error instanceof Error) {
+    //     const internalError = new Error("An error occured while fetching the decks");
+    //     internalError.name = "DATABASE_FETCH_ERROR";
+    //     throw internalError;
+    //   } else {
+    //     const unknownError = new Error("An unknown error occured while fetching the decks");
+    //     unknownError.name = "GET_DECK_UNKNOWN_ERROR";
+    //     throw unknownError;
+    //   }
+    // }
+  }
+
+  /**
    * Retrieves a specific deck document by its ID from Firestore.
    *
    * @param {string} deckID - The unique identifier of the deck to retrieve.
@@ -234,7 +294,7 @@ export class DeckRepository extends FirebaseAdmin {
    * @return {Promise<Deck>} A promise resolving to the created deck object, including its ID.
    * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
    */
-  public async createDeck(deckData: object): Promise<Deck> {
+  public async createDeck(deckData: Omit<Deck, "id">): Promise<Deck> {
     try {
       // Validate input
       if (!deckData || typeof deckData !== "object") {
@@ -253,8 +313,12 @@ export class DeckRepository extends FirebaseAdmin {
         throw error;
       }
 
+      // Destructure the deck data to exclude embedding_field
+      // eslint-disable-next-line camelcase
+      const {embedding_field, ...deckDataWithoutEmbedding} = deckData;
+
       // access newly created deck ID by `res.id`
-      const deck: Deck = ({id: res.id, ...deckData} as Deck);
+      const deck: Deck = ({id: res.id, ...deckDataWithoutEmbedding} as Deck);
 
       return deck;
     } catch (error) {

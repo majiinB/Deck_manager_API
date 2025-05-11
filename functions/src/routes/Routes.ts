@@ -58,6 +58,17 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 /**
+ * @route GET /v1/decks/
+ * @description Searches for a deck.
+ * @group Decks - Operations related to flashcard decks
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/", async (req: Request, res: Response) => {
+  await deckController.getOwnerDecks(req, res);
+});
+
+/**
  * @route GET /v1/decks/public
  * @description Fetches all decks.
  * @group Decks - Operations related to flashcard decks
