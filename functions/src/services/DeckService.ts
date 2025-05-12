@@ -21,7 +21,7 @@
  * @classdesc Handles business logic and data orchestration for deck operations, acting as an intermediary between the controller and the repository.
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-05-11
+ * @updated 2025-05-12
  */
 
 import {DeckRepository} from "../repositories/DeckRepository";
@@ -116,7 +116,7 @@ export class DeckService extends GeminiConfig {
   }
 
   /**
-   * searches for decks based on a query.
+   * Searches for decks based on a query.
    * Delegates the retrieval logic to the deck repository.
    *
    * @param {string} userID - The ID of the user whose decks are to be retrieved.
@@ -129,10 +129,14 @@ export class DeckService extends GeminiConfig {
   public async searchDeck(userID: string, query: string, limit:number, searchOwnDeck: boolean): Promise<object | void> {
     try {
       let decks;
+      const embedResponse = await this.embedQuery(query);
+      const firstEmbedObj = embedResponse.embeddings[0];
+      const embeddedQuery: number[] = firstEmbedObj.values;
+
       if (searchOwnDeck) {
-        decks = await this.deckRepository.searchOwnerDecks(userID, query, limit);
+        decks = await this.deckRepository.searchOwnerDecks(userID, embeddedQuery, limit);
       } else {
-        // decks = await this.deckRepository.searchPublicDecks(limit);
+        decks = await this.deckRepository.searchPublicDecks(userID, embeddedQuery, limit);
       }
 
       return decks;

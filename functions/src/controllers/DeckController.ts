@@ -23,7 +23,7 @@
  * @classdesc Handles HTTP request routing and processing for deck-related operations, coordinating with the DeckService.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-25
+ * @updated 2025-05-12
  */
 import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
@@ -133,11 +133,24 @@ export class DeckController {
     const errorResponse = new ErrorResponse();
     try {
       const searchQuery = req.query.searchQuery as string;
+      const searchOwnDeck = req.query.searchOwnDeck === "true";
+      const searchQueryRegex = /^[a-zA-Z0-9\s]+$/;
       const limit = 50;
       const userID = req.user?.user_id;
 
-      // Get pagination token if provided
-      const searchOwnDeck = req.query.searchOwnDeck === "true";
+      // Validate search query
+      if (!searchQuery || !searchQueryRegex.test(searchQuery)) {
+        errorResponse.setError("INVALID_SEARCH_QUERY");
+        errorResponse.setMessage("The search query should be of type string and not empty or blank");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      }
+
       // Call service method
       const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchOwnDeck);
 

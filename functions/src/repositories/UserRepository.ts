@@ -19,7 +19,7 @@
  * @classdesc Repository class for managing User data in Firestore.
  * @author Arthur M. Artugue
  * @created 2024-04-18
- * @updated 2025-04-18
+ * @updated 2025-05-12
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
@@ -59,7 +59,7 @@ export class UserRepository extends FirebaseAdmin {
       // Assign 'user not found' to IDs not present in the fetched data
       validOwnerIDs.forEach((id) => {
         if (!userMap[id]) {
-          userMap[id] = "user not found";
+          userMap[id] = "Deleted User";
         }
       });
 

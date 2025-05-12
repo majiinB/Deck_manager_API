@@ -22,12 +22,13 @@
  * @classdesc Provides data access methods for the 'decks' collection in Firestore, extending FirebaseAdmin for database connectivity.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-25
+ * @updated 2025-05-12
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
-import {Deck} from "../interface/Deck";
+import {Deck, DeckRaw} from "../interface/Deck";
 import {UserRepository} from "./UserRepository";
+import {VectorQuery} from "@google-cloud/firestore";
 
 /**
  * The `DeckRepository` class extends the `FirebaseAdmin` class to provide
@@ -171,8 +172,7 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-   * Retrieves a paginated list of decks owned by a specific user from Firestore.
-   * Orders decks by title.
+   * Retrieves decks based on user query (From the owners deck)
    *
    * @param {string} userID - The ID of the user whose decks to fetch.
    * @param {number} query - The search query to filter decks.
@@ -180,54 +180,119 @@ export class DeckRepository extends FirebaseAdmin {
    * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
    * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
    */
-  public async searchOwnerDecks(userID: string, query: string, limit: number): Promise<any> {
-    // try {
-    //   const db = this.getDb();
-    //   let query = db
-    //     .collection("decks")
-    //     .where("owner_id", "==", userID) // Filter by owner_id
-    //     .where("is_deleted", "==", false) // Filter out deleted decks
-    //     .orderBy("title") // Order results
-    //     .limit(limit); // Limit results
+  public async searchOwnerDecks(userID: string, query: number[], limit: number): Promise<object> {
+    try {
+      const db = this.getDb();
+      const collection = db.collection("decks");
+      const preFilteredVectorQuery : VectorQuery = collection
+        .where("owner_id", "==", userID) // Filter by owner_id
+        .where("is_deleted", "==", false)
+        .findNearest({
+          vectorField: "embedding_field",
+          queryVector: query,
+          limit: limit,
+          distanceMeasure: "COSINE",
+          distanceThreshold: 0.41,
+        }); // Order results
 
-    //   if (nextPageToken) {
-    //     const lastDocSnapShot = await db.collection("decks").doc(nextPageToken).get();
-    //     if (lastDocSnapShot.exists) {
-    //       query = query.startAfter(lastDocSnapShot);
-    //     }
-    //   }
+      const ownerMap: Record<string, string> = {};
 
-    //   const ownerMap: Record<string, string> = {};
+      const [vectorQueryResults, userName] = await Promise.all([
+        preFilteredVectorQuery.get(),
+        this.userRepository.getOwnerNames([userID]),
+      ]);
 
-    //   const [snapshot, userName] = await Promise.all([
-    //     query.get(),
-    //     this.userRepository.getOwnerNames([userID]),
-    //   ]);
+      // Extract deck data
+      const decks = vectorQueryResults.docs.map((doc)=> {
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
 
-    //   // Extract deck data
-    //   const decks = snapshot.docs.map((doc)=> ({
-    //     id: doc.id,
-    //     owner_name: ownerMap[doc.data().owner_id] || userName[userID],
-    //     ...doc.data(),
-    //   }));
-    //   // Get nextPageToken (last document ID)
-    //   const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-    //   const nextToken = lastDoc ? lastDoc.id : null;
-    //   return {
-    //     decks,
-    //     nextPageToken: nextToken,
-    //   };
-    // } catch (error) {
-    //   if (error instanceof Error) {
-    //     const internalError = new Error("An error occured while fetching the decks");
-    //     internalError.name = "DATABASE_FETCH_ERROR";
-    //     throw internalError;
-    //   } else {
-    //     const unknownError = new Error("An unknown error occured while fetching the decks");
-    //     unknownError.name = "GET_DECK_UNKNOWN_ERROR";
-    //     throw unknownError;
-    //   }
-    // }
+        return {
+          id: doc.id,
+          owner_name: ownerMap[deckDataWithoutEmbedding.owner_id] || userName[userID],
+          ...deckDataWithoutEmbedding,
+        };
+      });
+
+      return {decks};
+    } catch (error) {
+      if (error instanceof Error) {
+        const internalError = new Error("An error occured while fetching the decks");
+        internalError.name = "DATABASE_FETCH_ERROR";
+        throw internalError;
+      } else {
+        const unknownError = new Error("An unknown error occured while fetching the decks");
+        unknownError.name = "GET_DECK_UNKNOWN_ERROR";
+        throw unknownError;
+      }
+    }
+  }
+
+  /**
+   * Retrieves decks based on user query (From the public decks)
+   *
+   * @param {string} userID - The ID of the user whose made the request.
+   * @param {number} query - The search query to filter decks.
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
+   */
+  public async searchPublicDecks(userID: string, query: number[], limit: number): Promise<object> {
+    try {
+      const db = this.getDb();
+      const collection = db.collection("decks");
+      const preFilteredVectorQuery : VectorQuery = collection
+        .where("is_private", "==", false) // Filter by owner_id
+        .where("is_deleted", "==", false)
+        .findNearest({
+          vectorField: "embedding_field",
+          queryVector: query,
+          limit: limit,
+          distanceMeasure: "COSINE",
+          distanceThreshold: 0.41,
+        }); // Order results
+
+
+      // Retrieve the query snapshot
+      const vectorQueryResults = await preFilteredVectorQuery.get();
+
+      // Extract unique owner IDs
+      const ownerIds = vectorQueryResults.docs.map((doc) => doc.data().owner_id);
+      const ownerMap: Record<string, string> = {};
+
+      // Fetch user names in batches if there are more than 10 ownerIds
+      const batchSize = 10;
+      for (let i = 0; i < ownerIds.length; i += batchSize) {
+        const batchIds = ownerIds.slice(i, i + batchSize);
+        const userNames = await this.userRepository.getOwnerNames(batchIds);
+        Object.assign(ownerMap, userNames);
+      }
+
+      // Extract deck data
+      const decks = vectorQueryResults.docs.map((doc)=> {
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+
+        return {
+          id: doc.id,
+          owner_name: ownerMap[deckDataWithoutEmbedding.owner_id],
+          ...deckDataWithoutEmbedding,
+        };
+      });
+
+      return {decks};
+    } catch (error) {
+      console.log(error);
+      if (error instanceof Error) {
+        const internalError = new Error("An error occured while fetching the decks");
+        internalError.name = "DATABASE_FETCH_ERROR";
+        throw internalError;
+      } else {
+        const unknownError = new Error("An unknown error occured while fetching the decks");
+        unknownError.name = "GET_DECK_UNKNOWN_ERROR";
+        throw unknownError;
+      }
+    }
   }
 
   /**

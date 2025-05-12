@@ -26,7 +26,7 @@
  * @file Routes.ts
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-16
+ * @updated 2025-05-12
  */
 
 import {Router, Request, Response} from "express";
@@ -58,14 +58,14 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 /**
- * @route GET /v1/decks/
+ * @route GET /v1/decks/search
  * @description Searches for a deck.
  * @group Decks - Operations related to flashcard decks
  * @returns {Object} 200 - A JSON object containing all decks
  * @returns {Error} 500 - Internal Server Error
  */
-router.get("/", async (req: Request, res: Response) => {
-  await deckController.getOwnerDecks(req, res);
+router.get("/search", async (req: Request, res: Response) => {
+  await deckController.searchDeck(req, res);
 });
 
 /**

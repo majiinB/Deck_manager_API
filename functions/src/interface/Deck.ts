@@ -15,7 +15,7 @@
  * @interface Deck
  * @author Arthur M. Artugue
  * @created 2025-04-16
- * @updated 2025-05-11
+ * @updated 2025-05-12
  */
 
 import {FieldValue} from "firebase-admin/firestore";
@@ -36,4 +36,16 @@ export interface Deck {
   description: string;
   flashcard_count: number;
   embedding_field: FieldValue;
+}
+
+export interface DeckRaw {
+  title: string;
+  is_deleted: boolean;
+  is_private: boolean;
+  owner_id: string;
+  cover_photo: string;
+  created_at: FirebaseFirestore.Timestamp;
+  description: string;
+  flashcard_count: number;
+  embedding_field?: FieldValue;
 }
