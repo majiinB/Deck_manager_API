@@ -31,6 +31,7 @@ import {BaseResponse} from "../models/BaseResponse";
 import {ErrorResponse} from "../models/ErrorResponse";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 import {createDeckSchema} from "../schema/createDeckSchema";
+import {logger} from "firebase-functions";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -69,6 +70,8 @@ export class DeckController {
       const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
       const userID = req.user?.user_id;
 
+      logger.info("User", userID, "retrieving decks", "at", new Date().toISOString());
+
       // Validate limit parameter
       if (isNaN(limit) || (limit <= 1 || limit > 50)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
@@ -78,6 +81,7 @@ export class DeckController {
         baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
         baseResponse.setData(errorResponse);
 
+        logger.warn("User: ", userID, errorResponse.getError(), "limit: ", limit, "at", new Date().toISOString());
         res.status(400).json(baseResponse);
         return;
       }
@@ -92,7 +96,9 @@ export class DeckController {
       baseResponse.setMessage("Successfuly retrieved decks");
       baseResponse.setData(decks);
 
+      logger.info("User", userID, "sucessfully retrieved owned decks", "at", new Date().toISOString());
       res.status(200).json(baseResponse);
+      return;
     } catch (error) {
       // Handle errors
       if (error instanceof Error) {
@@ -103,6 +109,12 @@ export class DeckController {
         baseResponse.setMessage("An error has occured during the retrieval of decks");
         baseResponse.setData(errorResponse);
 
+        logger.error(
+          "User: ", req.user?.user_id,
+          "Failed Retrieving owned decks due to error",
+          errorResponse, error,
+          "at", new Date().toISOString()
+        );
         res.status(400).json(baseResponse);
         return;
       } else {
@@ -113,6 +125,12 @@ export class DeckController {
         baseResponse.setMessage("An error has occured during the retrieval of decks");
         baseResponse.setData(errorResponse);
 
+        logger.error(
+          "User: ", req.user?.user_id,
+          "Failed Retrieving owned decks due to error",
+          errorResponse, error,
+          "at", new Date().toISOString()
+        );
         res.status(500).json(baseResponse);
         return;
       }
