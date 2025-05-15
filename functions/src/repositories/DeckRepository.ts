@@ -66,20 +66,22 @@ export class DeckRepository extends FirebaseAdmin {
         }
       }
 
-      const ownerMap: Record<string, string> = {};
-
       const [snapshot, userName] = await Promise.all([
         query.get(),
         this.userRepository.getOwnerNames([userID]),
       ]);
 
 
-      // Extract deck data
-      const decks = snapshot.docs.map((doc)=> ({
-        id: doc.id,
-        owner_name: ownerMap[doc.data().owner_id] || userName[userID],
-        ...doc.data(),
-      }));
+      // Extract deck data, stripping out embedding_field
+      const decks = snapshot.docs.map((doc) => {
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+        return {
+          id: doc.id,
+          owner_name: userName[userID],
+          ...deckDataWithoutEmbedding,
+        };
+      });
 
       // Get nextPageToken (last document ID)
       const lastDoc = snapshot.docs[snapshot.docs.length - 1];
@@ -143,12 +145,16 @@ export class DeckRepository extends FirebaseAdmin {
         Object.assign(ownerMap, userNames);
       }
 
-      // Extract deck data
-      const decks = snapshot.docs.map((doc)=> ({
-        id: doc.id,
-        owner_name: ownerMap[doc.data().owner_id],
-        ...doc.data(),
-      }));
+      // Extract deck data, stripping out embedding_field
+      const decks = snapshot.docs.map((doc) => {
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+        return {
+          id: doc.id,
+          owner_name: ownerMap[deckDataWithoutEmbedding.owner_id],
+          ...deckDataWithoutEmbedding,
+        };
+      });
 
       // Get nextPageToken (last document ID)
       const lastDoc = snapshot.docs[snapshot.docs.length - 1];
@@ -170,6 +176,92 @@ export class DeckRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+   * Retrieves a paginated list of saved decks for a specific user from Firestore.
+   * Joins deck info for each saved deck.
+   *
+   * @param {string} userID - The ID of the user whose saved decks to retrieve.
+   * @param {number} limit - The maximum number of saved decks to return per page.
+   * @param {string | null} [nextPageToken=null] - The document ID to start after for pagination.
+   * @return {Promise<object>} A promise resolving to an object containing the saved decks array and the next page token.
+   * @throws {Error} Throws custom errors on failure.
+   */
+  public async getSavedDecks(userID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
+    try {
+      const db = this.getDb();
+      let query = db
+        .collection("saved_decks")
+        .where("user_id", "==", userID)
+        .orderBy("saved_at", "desc")
+        .limit(limit);
+
+      if (nextPageToken) {
+        const lastDocSnapShot = await db.collection("saved_decks").doc(nextPageToken).get();
+        if (lastDocSnapShot.exists) {
+          query = query.startAfter(lastDocSnapShot);
+        }
+      }
+
+      const snapshot = await query.get();
+
+      const deckIds = snapshot.docs.map((doc) => doc.data().deck_id);
+      const deckRefs = deckIds.map((id) => db.collection("decks").doc(id));
+
+      // Fetch all referenced deck documents
+      const deckSnapshots = await Promise.all(deckRefs.map((ref) => ref.get()));
+
+      const ownerIds = deckSnapshots.map((deckSnap) => deckSnap.exists ? deckSnap.data()!.owner_id : null).filter(Boolean);
+      const ownerMap: Record<string, string> = {};
+
+      // Batch fetch owner names
+      const batchSize = 10;
+      for (let i = 0; i < ownerIds.length; i += batchSize) {
+        const batchIds = ownerIds.slice(i, i + batchSize);
+        const userNames = await this.userRepository.getOwnerNames(batchIds as string[]);
+        Object.assign(ownerMap, userNames);
+      }
+
+      // Combine saved deck info with deck data and owner names
+      const decks = snapshot.docs.map((doc, index) => {
+        const deckSnap = deckSnapshots[index];
+        const deckData = deckSnap.exists ? deckSnap.data() : null;
+
+        // strip out embedding_field
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...raw} = deckSnap.data() as DeckRaw;
+        return {
+          id: doc.id,
+          saved_at: doc.data().saved_at,
+          deck: deckData? {
+            id: deckSnap.id,
+            owner_name: ownerMap[raw.owner_id],
+            ...raw,
+          }: null,
+        };
+      });
+
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      const nextToken = lastDoc ? lastDoc.id : null;
+
+      return {
+        decks,
+        nextPageToken: nextToken,
+      };
+    } catch (error) {
+      console.log(error);
+      if (error instanceof Error) {
+        const internalError = new Error("An error occurred while fetching the saved decks.");
+        internalError.name = "DATABASE_FETCH_SAVED_DECKS_ERROR";
+        throw internalError;
+      } else {
+        const unknownError = new Error("An unknown error occurred while fetching the saved decks.");
+        unknownError.name = "GET_SAVED_DECKS_UNKNOWN_ERROR";
+        throw unknownError;
+      }
+    }
+  }
+
 
   /**
    * Retrieves decks based on user query (From the owners deck)

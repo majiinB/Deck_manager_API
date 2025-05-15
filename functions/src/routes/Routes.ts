@@ -58,17 +58,6 @@ router.get("/", async (req: Request, res: Response) => {
 });
 
 /**
- * @route GET /v1/decks/search
- * @description Searches for a deck.
- * @group Decks - Operations related to flashcard decks
- * @returns {Object} 200 - A JSON object containing all decks
- * @returns {Error} 500 - Internal Server Error
- */
-router.get("/search", async (req: Request, res: Response) => {
-  await deckController.searchDeck(req, res);
-});
-
-/**
  * @route GET /v1/decks/public
  * @description Fetches all decks.
  * @group Decks - Operations related to flashcard decks
@@ -77,6 +66,28 @@ router.get("/search", async (req: Request, res: Response) => {
  */
 router.get("/public", async (req: Request, res: Response) => {
   await deckController.getPublicDecks(req, res);
+});
+
+/**
+ * @route GET /v1/decks/
+ * @description Fetches all decks.
+ * @group Decks - Operations related to flashcard decks
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/saved", async (req: Request, res: Response) => {
+  await deckController.getSavedDecks(req, res);
+});
+
+/**
+ * @route GET /v1/decks/search
+ * @description Searches for a deck.
+ * @group Decks - Operations related to flashcard decks
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/search", async (req: Request, res: Response) => {
+  await deckController.searchDeck(req, res);
 });
 
 /**

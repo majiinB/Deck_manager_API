@@ -99,6 +99,25 @@ export class DeckService extends Gemini {
   }
 
   /**
+   * Retrieves decks owned by the specified user with pagination.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user whose decks are to be retrieved.
+   * @param {number} limit - The maximum number of decks to retrieve per page.
+   * @param {string | null} nextPageToken - Token for fetching the next page of results, or null for the first page.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async getSavedDeck(userID: string, limit: number, nextPageToken: string | null): Promise<object | void> {
+    try {
+      const decks = await this.deckRepository.getSavedDecks(userID, limit, nextPageToken);
+      return decks;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+    }
+  }
+
+  /**
    * Retrieves a specific deck by its ID.
    * Delegates the retrieval logic to the deck repository.
    *

@@ -270,6 +270,89 @@ export class DeckController {
   }
 
   /**
+   * Handles the request to fetch all saved decks of an owner.
+   * Validates query parameters (limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object, potentially including authenticated user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async getSavedDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const userID = req.user?.user_id;
+
+      logger.info("User", userID, "retrieving saved decks", "at", new Date().toISOString());
+
+      // Validate limit parameter
+      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+        errorResponse.setError("INVALID_LIMIT_VALUE");
+        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50");
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
+        baseResponse.setData(errorResponse);
+
+        logger.warn("User: ", userID, errorResponse.getError(), "limit: ", limit, "at", new Date().toISOString());
+        res.status(400).json(baseResponse);
+        return;
+      }
+
+      // Get pagination token if provided
+      const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
+      // Call service method
+      const decks = await this.deckService.getSavedDeck(userID, limit, nextPageToken);
+
+      // Send success response
+      baseResponse.setStatus(200);
+      baseResponse.setMessage("Successfuly retrieved decks");
+      baseResponse.setData(decks);
+
+      logger.info("User", userID, "sucessfully retrieved saved decks", "at", new Date().toISOString());
+      res.status(200).json(baseResponse);
+      return;
+    } catch (error) {
+      // Handle errors
+      if (error instanceof Error) {
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occured during the retrieval of saved decks");
+        baseResponse.setData(errorResponse);
+
+        logger.error(
+          "User: ", req.user?.user_id,
+          "Failed Retrieving saved decks due to error",
+          errorResponse, error,
+          "at", new Date().toISOString()
+        );
+        res.status(400).json(baseResponse);
+        return;
+      } else {
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in get saved decks");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An error has occured during the retrieval of saved decks");
+        baseResponse.setData(errorResponse);
+
+        logger.error(
+          "User: ", req.user?.user_id,
+          "Failed Retrieving saved decks due to error",
+          errorResponse, error,
+          "at", new Date().toISOString()
+        );
+        res.status(500).json(baseResponse);
+        return;
+      }
+    }
+  }
+
+  /**
    * Handles the request to fetch a specific deck by its ID.
    * Uses DeckService for retrieval based on the deck ID from URL parameters.
    * Responds with the specific deck data or an error.
