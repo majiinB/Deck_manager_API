@@ -22,7 +22,7 @@
  * @classdesc Handles flashcard-related HTTP requests and delegates to FlashcardService for business logic.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-16
+ * @updated 2025-05-16
  */
 
 import {Request, Response} from "express";
@@ -64,10 +64,10 @@ export class FlashcardController {
     const errorResponse = new ErrorResponse();
 
     try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 100;
       const deckID = req.params.deckID;
 
-      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      if (isNaN(limit) || (limit <= 1 || limit > 100)) {
         errorResponse.setError("INVALID_LIMIT_VALUE");
         errorResponse.setMessage("Invalid limit value. It must be a positive number.");
 

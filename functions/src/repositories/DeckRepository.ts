@@ -22,13 +22,14 @@
  * @classdesc Provides data access methods for the 'decks' collection in Firestore, extending FirebaseAdmin for database connectivity.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-05-12
+ * @updated 2025-05-16
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Deck, DeckRaw, SaveDeck} from "../interface/Deck";
+import {Utils} from "../utils/utils";
 import {UserRepository} from "./UserRepository";
-import {VectorQuery} from "@google-cloud/firestore";
+import {VectorQuery, VectorQuerySnapshot} from "@google-cloud/firestore";
 
 /**
  * The `DeckRepository` class extends the `FirebaseAdmin` class to provide
@@ -229,15 +230,11 @@ export class DeckRepository extends FirebaseAdmin {
 
         // strip out embedding_field
         // eslint-disable-next-line camelcase
-        const {embedding_field, ...raw} = deckSnap.data() as DeckRaw;
+        const {embedding_field, ...raw} = deckData as DeckRaw;
         return {
-          id: doc.id,
-          saved_at: doc.data().saved_at,
-          deck: deckData? {
-            id: deckSnap.id,
-            owner_name: ownerMap[raw.owner_id],
-            ...raw,
-          }: null,
+          id: deckSnap.id,
+          owner_name: ownerMap[raw.owner_id],
+          ...raw,
         };
       });
 
@@ -268,41 +265,67 @@ export class DeckRepository extends FirebaseAdmin {
    *
    * @param {string} userID - The ID of the user whose decks to fetch.
    * @param {number} query - The search query to filter decks.
+   * @param {number[]} vectorQuery - The embedding vector to search against.
    * @param {number} limit - The maximum number of decks to return per page.
    * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
    * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
    */
-  public async searchOwnerDecks(userID: string, query: number[], limit: number): Promise<object> {
+  public async searchOwnerDecks(userID: string, query: string, vectorQuery: number[], limit: number): Promise<object> {
     try {
       const db = this.getDb();
       const collection = db.collection("decks");
+
+      // Vector Query to find nearest decks
       const preFilteredVectorQuery : VectorQuery = collection
         .where("owner_id", "==", userID) // Filter by owner_id
         .where("is_deleted", "==", false)
         .findNearest({
           vectorField: "embedding_field",
-          queryVector: query,
+          queryVector: vectorQuery,
           limit: limit,
           distanceMeasure: "COSINE",
           distanceThreshold: 0.41,
-        }); // Order results
+        });
+
+      // Exact title lookup
+      const cleanedQuery = Utils.cleanTitle(query);
+
+      // Exact‐title lookup on those same IDs
+      const exactTitleQuery = await db
+        .collection("decks")
+        .where("owner_id", "==", userID)
+        .where("title", "==", cleanedQuery)
+        .where("is_deleted", "==", false);
 
       const ownerMap: Record<string, string> = {};
 
-      const [vectorQueryResults, userName] = await Promise.all([
+      const [vectorQueryResults, exactTitleQueryResults, userName] = await Promise.all([
         preFilteredVectorQuery.get(),
+        exactTitleQuery.get(),
         this.userRepository.getOwnerNames([userID]),
       ]);
 
+
+      // Merge IDs exact matches
+      const exactIDs = new Set(exactTitleQueryResults.docs.map((d) => d.id));
+      console.log(`Exact IDs: ${exactIDs}`);
+
+      const mergedDocs = [
+        // exact‐match docs
+        ...exactTitleQueryResults.docs,
+        // then vector docs that aren’t already in exactIDs
+        ...vectorQueryResults.docs.filter((d) => !exactIDs.has(d.id)),
+      ].slice(0, limit);
+
       // Extract deck data
-      const decks = vectorQueryResults.docs.map((doc)=> {
+      const decks = mergedDocs.map((doc)=> {
         // eslint-disable-next-line camelcase
-        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+        const {embedding_field, ...raw} = doc.data() as DeckRaw;
 
         return {
           id: doc.id,
-          owner_name: ownerMap[deckDataWithoutEmbedding.owner_id] || userName[userID],
-          ...deckDataWithoutEmbedding,
+          owner_name: ownerMap[raw.owner_id] || userName[userID],
+          ...raw,
         };
       });
 
@@ -386,6 +409,76 @@ export class DeckRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+ * Retrieves saved decks for a user based on an embedding similarity search.
+ * Filters to only decks the user has saved, then performs a nearest-neighbor vector query on those decks.
+ * Strips out embedding_field from returned results.
+ *
+ * @param {string} userID - The ID of the user whose saved decks to search.
+ * @param {number[]} query - The embedding vector to search against.
+ * @param {number} limit - The maximum number of decks to return.
+ * @return {Promise<object>} A promise resolving to an object containing the matching decks.
+ * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
+ */
+  public async searchSavedDecks(userID: string, query: number[], limit: number): Promise<object> {
+    try {
+      const db = this.getDb();
+
+      // 1. Fetch saved deck IDs for this user
+      const savedSnap = await db
+        .collection("saved_decks")
+        .where("user_id", "==", userID)
+        .get();
+      const deckIds = savedSnap.docs.map((doc) => doc.data().deck_id);
+      if (deckIds.length === 0) {
+        return {decks: []};
+      }
+
+      // 2. Perform nearest-neighbor search on decks the user saved
+      const vectorQuery = db
+        .collection("decks")
+        .where("__name__", "in", deckIds)
+        .findNearest({
+          vectorField: "embedding_field",
+          queryVector: query,
+          limit: limit,
+          distanceMeasure: "COSINE",
+          distanceThreshold: 0.41,
+        });
+
+      // 3. Execute vector query and fetch owner names
+      const [vectorResults, ownerNames] = await Promise.all([
+        vectorQuery.get() as Promise<VectorQuerySnapshot>, // Explicitly type the result
+        this.userRepository.getOwnerNames(
+          (await vectorQuery.get()).docs.map((d) => d.data().owner_id) // Ensure proper typing
+        ),
+      ]);
+
+      // 4. Build response, stripping embedding_field
+      const decks = vectorResults.docs.map((doc) => {
+        // eslint-disable-next-line camelcase
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+        return {
+          id: doc.id,
+          owner_name: ownerNames[deckDataWithoutEmbedding.owner_id],
+          ...deckDataWithoutEmbedding,
+        };
+      });
+
+      return {decks};
+    } catch (error) {
+      if (error instanceof Error) {
+        const internalError = new Error("An error occurred while searching saved decks");
+        internalError.name = "DATABASE_FETCH_ERROR";
+        throw internalError;
+      }
+      const unknownError = new Error("An unknown error occurred while searching saved decks");
+      unknownError.name = "SEARCH_SAVED_DECKS_UNKNOWN_ERROR";
+      throw unknownError;
+    }
+  }
+
 
   /**
    * Retrieves a specific deck document by its ID from Firestore.
@@ -540,6 +633,52 @@ export class DeckRepository extends FirebaseAdmin {
       }
     }
   }
+
+  /**
+ * Deletes an existing saved‐deck entry from the Firestore 'saved_decks' collection.
+ *
+ * @param {object} unsaveDeckData - The identifying data for the saved deck:
+ *   { deck_id: string; user_id: string; }
+ * @throws {Error} Throws custom errors (DECK_NOT_SAVED, DATABASE_DELETE_ERROR) on failure.
+ */
+  public async unsaveDeck(unsaveDeckData: { deck_id: string; user_id: string }): Promise<void> {
+    try {
+      const db = this.getDb();
+      const collectionRef = db.collection("saved_decks");
+
+      // Find the existing saved‐deck entry
+      const snapshot = await collectionRef
+        .where("deck_id", "==", unsaveDeckData.deck_id)
+        .where("user_id", "==", unsaveDeckData.user_id)
+        .get();
+
+      if (snapshot.empty) {
+        const error = new Error("Deck is not saved");
+        error.name = "DECK_NOT_SAVED";
+        throw error;
+      }
+
+      // Delete all matching docs (should usually be one)
+      const batch = db.batch();
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      await batch.commit();
+    } catch (error) {
+      if (error instanceof Error) {
+        // rethrow known errors or wrap unknowns
+        if (error.name === "DECK_NOT_SAVED") throw error;
+        const internalError = new Error("An error occurred while unsaving the deck");
+        internalError.name = "DATABASE_DELETE_ERROR";
+        throw internalError;
+      } else {
+        const unknownError = new Error("An unknown error occurred while unsaving the deck");
+        unknownError.name = "UNSAVE_DECK_UNKNOWN_ERROR";
+        throw unknownError;
+      }
+    }
+  }
+
 
   /**
    * Updates an existing deck document in Firestore.

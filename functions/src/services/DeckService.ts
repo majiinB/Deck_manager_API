@@ -21,7 +21,7 @@
  * @classdesc Handles business logic and data orchestration for deck operations, acting as an intermediary between the controller and the repository.
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-05-12
+ * @updated 2025-05-16
  */
 
 import {DeckRepository} from "../repositories/DeckRepository";
@@ -142,20 +142,22 @@ export class DeckService extends Gemini {
    * @param {string} userID - The ID of the user whose decks are to be retrieved.
    * @param {string} query - The search query string.
    * @param {number} limit - The maximum number of decks to retrieve per page.
-   * @param {boolean} searchOwnDeck - Flag indicating whether to search the user's own decks or public decks.
+   * @param {string} filter - Flag indicating whether to search the user's own decks, saved decks, or public decks.
    * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
    * @throws Will re-throw errors encountered during repository access.
    */
-  public async searchDeck(userID: string, query: string, limit:number, searchOwnDeck: boolean): Promise<object | void> {
+  public async searchDeck(userID: string, query: string, limit:number, filter: string): Promise<object | void> {
     try {
       let decks;
       const embedResponse = await this.embedQuery(query);
       const firstEmbedObj = embedResponse.embeddings[0];
       const embeddedQuery: number[] = firstEmbedObj.values;
 
-      if (searchOwnDeck) {
-        decks = await this.deckRepository.searchOwnerDecks(userID, embeddedQuery, limit);
-      } else {
+      if (filter === "MY_DECKS") {
+        decks = await this.deckRepository.searchOwnerDecks(userID, query, embeddedQuery, limit);
+      } else if (filter === "SAVED_DECKS") {
+        decks = await this.deckRepository.searchSavedDecks(userID, embeddedQuery, limit);
+      } else if (filter === "PUBLIC_DECKS") {
         decks = await this.deckRepository.searchPublicDecks(userID, embeddedQuery, limit);
       }
 
@@ -270,6 +272,34 @@ export class DeckService extends Gemini {
       };
 
       await this.deckRepository.saveDeck(savedDeckData);
+      return;
+    } catch (error) {
+      if (error instanceof Error) throw error;
+    }
+  }
+
+  /**
+   * saves an existing deck.
+   * Delegates the unsave logic directly to the deck repository.
+   *
+   * @param {string} userID - The ID of the user requesting the update (for ownership verification in repository).
+   * @param {string} deckID - The unique identifier of the deck to update.
+   * @param {object} updateData - An object containing the fields to update (e.g., { title: 'New Title', is_private: false }).
+   * @return {Promise<object | void>} A promise resolving to the updated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered (e.g., deck not found, permission denied, repository access error).
+   */
+  public async unsaveDeck(userID: string, deckID: string): Promise<void> {
+    try {
+      const deck = await this.getSpecificDeck(deckID) as Deck;
+      console.log(deck);
+
+      if (!deck) {
+        const error = new Error("Deck not found");
+        error.name = "DATABASE_SAVE_DECK_ERROR";
+        throw error;
+      }
+
+      await this.deckRepository.unsaveDeck({deck_id: deckID, user_id: userID});
       return;
     } catch (error) {
       if (error instanceof Error) throw error;

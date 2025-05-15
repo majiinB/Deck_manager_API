@@ -23,7 +23,7 @@
  * @classdesc Handles HTTP request routing and processing for deck-related operations, coordinating with the DeckService.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-05-12
+ * @updated 2025-05-16
  */
 import {Request, Response} from "express";
 import {DeckService} from "../services/DeckService";
@@ -150,8 +150,11 @@ export class DeckController {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
+      const fitlers = ["MY_DECKS", "SAVED_DECKS", "PUBLIC_DECKS"];
+      const filter = req.query.filter as string;
+      const searchFilter = fitlers.includes(filter) ? filter : "PUBLIC_DECKS";
+
       const searchQuery = req.query.searchQuery as string;
-      const searchOwnDeck = req.query.searchOwnDeck === "true";
       const searchQueryRegex = /^[a-zA-Z0-9\s]+$/;
       const limit = 50;
       const userID = req.user?.user_id;
@@ -170,7 +173,7 @@ export class DeckController {
       }
 
       // Call service method
-      const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchOwnDeck);
+      const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchFilter);
 
       // Send success response
       baseResponse.setStatus(200);
@@ -522,7 +525,7 @@ export class DeckController {
         errorResponse.setError("DECK_ID_REQUIRED");
         errorResponse.setMessage("The deck ID is required to save the deck");
         baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occurred during the creation of the deck");
+        baseResponse.setMessage("An error has occurred while saving the deck");
         baseResponse.setData(errorResponse);
         res.status(400).json(baseResponse);
         return;
@@ -532,7 +535,7 @@ export class DeckController {
         errorResponse.setError("INVALID_DECK_ID");
         errorResponse.setMessage("The deck ID should be of type string and not empty or blank");
         baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occurred during the creation of the deck");
+        baseResponse.setMessage("An error has occurred while saving the deck");
         baseResponse.setData(errorResponse);
         res.status(400).json(baseResponse);
         return;
@@ -553,17 +556,89 @@ export class DeckController {
         errorResponse.setMessage(error.message);
 
         baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the deck");
+        baseResponse.setMessage("An error has occurred while saving the deck");
         baseResponse.setData(errorResponse);
 
         res.status(400).json(baseResponse);
         return;
       } else {
         errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in create deck");
+        errorResponse.setMessage("An unknown error occurred in save deck");
 
         baseResponse.setStatus(500);
-        baseResponse.setMessage("An unknown error occurred during the creation of a deck");
+        baseResponse.setMessage("An unknown error occurred while saving the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(500).json(baseResponse);
+        return;
+      }
+    }
+  }
+
+  /**
+   * Handles the request to save a deck.
+   * Validates required fields (deckID) from the request body.
+   * Uses DeckService to create the deck for the authenticated user.
+   * Responds with the created deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object containing deck details in the body and user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async unsaveDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const errorResponse = new ErrorResponse();
+    try {
+      const userID = req.user?.user_id;
+      const deckID = req.params.deckID;
+
+      // --- Input Validations ---
+      if (!deckID) {
+        errorResponse.setError("DECK_ID_REQUIRED");
+        errorResponse.setMessage("The deck ID is required to unsave the deck");
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occurred while unsaving the deck");
+        baseResponse.setData(errorResponse);
+        res.status(400).json(baseResponse);
+        return;
+      }
+
+      if (typeof deckID !== "string" || deckID.trim() === "") {
+        errorResponse.setError("INVALID_DECK_ID");
+        errorResponse.setMessage("The deck ID should be of type string and not empty or blank");
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occurred while unsaving the deck");
+        baseResponse.setData(errorResponse);
+        res.status(400).json(baseResponse);
+        return;
+      }
+
+      // Call service method
+      await this.deckService.unsaveDeck(userID, deckID);
+
+      baseResponse.setStatus(201);
+      baseResponse.setMessage("Deck was successfully unsaved");
+      baseResponse.setData(null);
+
+      res.status(201).json(baseResponse);
+      return;
+    } catch (error) {
+      if (error instanceof Error) {
+        errorResponse.setError(error.name);
+        errorResponse.setMessage(error.message);
+
+        baseResponse.setStatus(400);
+        baseResponse.setMessage("An error has occurred while unsaving the deck");
+        baseResponse.setData(errorResponse);
+
+        res.status(400).json(baseResponse);
+        return;
+      } else {
+        errorResponse.setError("UNKNOWN_ERROR");
+        errorResponse.setMessage("An unknown error occurred in save deck");
+
+        baseResponse.setStatus(500);
+        baseResponse.setMessage("An unknown error occurred while unsaving the deck");
         baseResponse.setData(errorResponse);
 
         res.status(500).json(baseResponse);

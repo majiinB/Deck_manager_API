@@ -26,7 +26,7 @@
  * @file Routes.ts
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-05-12
+ * @updated 2025-05-16
  */
 
 import {Router, Request, Response} from "express";
@@ -137,6 +137,23 @@ router.post("/", async (req: Request, res: Response) => {
  */
 router.post("/save/:deckID", async (req: Request, res: Response) => {
   await deckController.saveDeck(req, res);
+});
+
+/**
+ * @route POST /v1/decks/unsave/:deckID
+ * @description Saves a new flashcard deck.
+ * @group Decks - Operations related to flashcard decks
+ *
+ * @param {Object} req.body - The request body containing deck details.
+ * @param {string} req.body.title - The title of the deck.
+ * @param {string} req.body.coverPhoto - (Optional) Cover photo URL of the deck.
+ *
+ * @returns {Object} 201 - A JSON object containing the created deck.
+ * @returns {Error} 400 - Bad request, missing required fields.
+ * @returns {Error} 500 - Internal server error.
+ */
+router.post("/unsave/:deckID", async (req: Request, res: Response) => {
+  await deckController.unsaveDeck(req, res);
 });
 
 /**
