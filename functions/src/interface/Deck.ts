@@ -49,3 +49,9 @@ export interface DeckRaw {
   flashcard_count: number;
   embedding_field?: FieldValue;
 }
+
+export interface SaveDeck {
+  deck_id: string;
+  user_id: string;
+  saved_at: FirebaseFirestore.Timestamp;
+}

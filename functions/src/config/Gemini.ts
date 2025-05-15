@@ -24,7 +24,7 @@ dotenv.config();
  * Class responsible for initializing and managing the Google Generative AI SDK
  * for server-side operations, such as authentication and Firestore database access.
  */
-export class GeminiConfig {
+export class Gemini {
   /**
    * API key for authenticating requests to Google Generative AI services.
    * Fetched from the environment variables for security.

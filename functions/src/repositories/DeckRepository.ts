@@ -26,7 +26,7 @@
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
-import {Deck, DeckRaw} from "../interface/Deck";
+import {Deck, DeckRaw, SaveDeck} from "../interface/Deck";
 import {UserRepository} from "./UserRepository";
 import {VectorQuery} from "@google-cloud/firestore";
 
@@ -302,7 +302,7 @@ export class DeckRepository extends FirebaseAdmin {
    * @return {Promise<SpecificDeckResponse>} A promise resolving to an object containing the deck data (or null if not found).
    * @throws {Error} Throws custom errors (INVALID_DECK_ID, DECK_NOT_FOUND, DATABASE_FETCH_ERROR) on failure or invalid input.
    */
-  public async getSpecificDeck(deckID: string): Promise<object> {
+  public async getSpecificDeck(deckID: string): Promise<object | null> {
     try {
       // Validate inputs
       if (!deckID || typeof deckID !== "string") {
@@ -324,17 +324,18 @@ export class DeckRepository extends FirebaseAdmin {
       }
 
       // Extract deck data
-      const deckData = deckSnap.data();
-      const ownerMap = deckData ? await this.userRepository.getOwnerNames([deckData.owner_id]) : {};
-      const deck = deckData ? {
+
+      // eslint-disable-next-line camelcase
+      const {embedding_field, ...deckDataWithoutEmbedding} = deckSnap.data() as DeckRaw;
+
+      const ownerMap = deckDataWithoutEmbedding ? await this.userRepository.getOwnerNames([deckDataWithoutEmbedding.owner_id]) : {};
+      const deck = deckDataWithoutEmbedding ? {
         id: deckSnap.id,
-        owner_name: ownerMap[deckData.owner_id],
-        ...deckData,
+        owner_name: ownerMap[deckDataWithoutEmbedding.owner_id],
+        ...deckDataWithoutEmbedding,
       } : null;
 
-      return {
-        deck,
-      };
+      return deck;
     } catch (error) {
       if (error instanceof Error) {
         if (error.name === "INVALID_DECK_ID" ||
@@ -407,6 +408,48 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
+   * Creates a new deck document in the Firestore 'saved_decks' collection.
+   *
+   * @param {object} saveDeckData - The data object for the new deck (should match expected schema).
+   * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
+   */
+  public async saveDeck(saveDeckData: SaveDeck): Promise<void> {
+    try {
+      const db = this.getDb();
+
+      const collectionRef = db.collection("saved_decks");
+
+      // Check if deck is already saved
+      const existingDeck = await collectionRef
+        .where("deck_id", "==", saveDeckData.deck_id)
+        .where("user_id", "==", saveDeckData.user_id)
+        .get();
+
+      if (!existingDeck.empty) {
+        const error = new Error("Deck already saved");
+        error.name = "DECK_ALREADY_SAVED";
+        throw error;
+      }
+
+      const res = await collectionRef.add(saveDeckData);
+
+      if (!res || !res.id) {
+        const error = new Error("Failed to save deck, no reference returned");
+        error.name = "DATABASE_DECK_SAVE_ERROR";
+        throw error;
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      } else {
+        const unknownError = new Error("An unknown error occured while saving the deck");
+        unknownError.name = "SAVE_DECK_UNKNOWN_ERROR";
+        throw unknownError;
+      }
+    }
+  }
+
+  /**
    * Updates an existing deck document in Firestore.
    * Verifies that the deck exists and the requesting user is the owner before updating.
    *
@@ -463,6 +506,7 @@ export class DeckRepository extends FirebaseAdmin {
       }
 
       const deck = updatedDeck ? {id: deckId, ...updatedDeck.data} : null;
+      console.log(`Deck with ID ${deck} has been updated.`);
 
       return {
         deck,

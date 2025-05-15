@@ -112,6 +112,23 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 /**
+ * @route POST /v1/decks/save/:deckID
+ * @description Saves a new flashcard deck.
+ * @group Decks - Operations related to flashcard decks
+ *
+ * @param {Object} req.body - The request body containing deck details.
+ * @param {string} req.body.title - The title of the deck.
+ * @param {string} req.body.coverPhoto - (Optional) Cover photo URL of the deck.
+ *
+ * @returns {Object} 201 - A JSON object containing the created deck.
+ * @returns {Error} 400 - Bad request, missing required fields.
+ * @returns {Error} 500 - Internal server error.
+ */
+router.post("/save/:deckID", async (req: Request, res: Response) => {
+  await deckController.saveDeck(req, res);
+});
+
+/**
  * @route PUT api/v1/decks/:deckID
  * @description Updates an existing deck.
  * @param {string} deckID - The unique identifier of the deck to update (from URL params).

@@ -27,16 +27,16 @@
 import {DeckRepository} from "../repositories/DeckRepository";
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Utils} from "../utils/utils";
-import {Deck} from "../interface/Deck";
+import {Deck, SaveDeck} from "../interface/Deck";
 import {FlashcardService} from "../services/FlashCardService";
-import {GeminiConfig} from "../config/GeminiConfig";
+import {Gemini} from "../config/Gemini";
 import {FieldValue} from "firebase-admin/firestore";
 
 /**
  * Service class responsible for handling operations related to decks.
  * This class provides methods to manage and manipulate deck data.
  */
-export class DeckService extends GeminiConfig {
+export class DeckService extends Gemini {
   /**
    * A repository instance for managing deck-related data operations.
    * Provides methods to interact with the data source for creating, reading,
@@ -106,12 +106,13 @@ export class DeckService extends GeminiConfig {
    * @return {Promise<object | void>} A promise resolving to the specific deck data object from the repository, or void/throws if not found or on error.
    * @throws Will re-throw errors encountered (e.g., deck not found, repository access error).
    */
-  public async getSpecificDeck(deckID:string): Promise<object | void> {
+  public async getSpecificDeck(deckID:string): Promise<object | null> {
     try {
       const decks = await this.deckRepository.getSpecificDeck(deckID);
       return decks;
     } catch (error) {
       if (error instanceof Error) throw error;
+      else return null;
     }
   }
 
@@ -195,6 +196,62 @@ export class DeckService extends GeminiConfig {
       return {
         deck: decks,
       };
+    } catch (error) {
+      if (error instanceof Error) throw error;
+    }
+  }
+
+  /**
+   * saves an existing deck.
+   * Delegates the save logic directly to the deck repository.
+   *
+   * @param {string} userID - The ID of the user requesting the update (for ownership verification in repository).
+   * @param {string} deckID - The unique identifier of the deck to update.
+   * @param {object} updateData - An object containing the fields to update (e.g., { title: 'New Title', is_private: false }).
+   * @return {Promise<object | void>} A promise resolving to the updated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered (e.g., deck not found, permission denied, repository access error).
+   */
+  public async saveDeck(userID: string, deckID: string): Promise<void> {
+    try {
+      const deck = await this.getSpecificDeck(deckID) as Deck;
+      console.log(deck);
+
+      if (!deck) {
+        const error = new Error("Deck not found");
+        error.name = "DATABASE_SAVE_DECK_ERROR";
+        throw error;
+      }
+
+      console.log(deck.is_deleted);
+      if (deck.is_deleted) {
+        const error = new Error("You cannot save a deleted deck");
+        error.name = "DATABASE_SAVE_DECK_ERROR";
+        throw error;
+      }
+
+      console.log(deck.is_private);
+      if (deck.is_private) {
+        const error = new Error("You cannot save a private deck");
+        error.name = "DATABASE_SAVE_DECK_ERROR";
+        throw error;
+      }
+
+      console.log(deck.owner_id);
+      console.log(userID);
+      if (deck.owner_id == userID) {
+        const error = new Error("You cannot save your own deck");
+        error.name = "DATABASE_SAVE_DECK_ERROR";
+        throw error;
+      }
+
+      const savedDeckData : SaveDeck = {
+        deck_id: deckID,
+        user_id: userID,
+        saved_at: FirebaseAdmin.getTimeStamp(),
+      };
+
+      await this.deckRepository.saveDeck(savedDeckData);
+      return;
     } catch (error) {
       if (error instanceof Error) throw error;
     }
