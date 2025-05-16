@@ -23,7 +23,7 @@
  * @classdesc Provides data access methods for the 'flashcards' subcollection within 'decks' in Firestore, managing related deck counts and performing necessary authorization checks.
  * @author Arthur M. Artugue
  * @created 2024-03-30
- * @updated 2025-04-03
+ * @updated 2025-05-17
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
@@ -66,7 +66,7 @@ export class FlashcardRepository extends FirebaseAdmin {
       let query = deckRef
         .collection("flashcards")
         .where("is_deleted", "==", false)
-        .orderBy("created_at")
+        .orderBy("term")
         .limit(limit);
 
       if (nextPageToken) {
