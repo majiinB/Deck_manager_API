@@ -30,7 +30,7 @@ import {ApiError} from "../helpers/apiError";
 import {Deck, DeckRaw, SaveDeck} from "../interface/Deck";
 import {Utils} from "../utils/utils";
 import {UserRepository} from "./UserRepository";
-import {VectorQuery, VectorQuerySnapshot} from "@google-cloud/firestore";
+import {FieldValue, VectorQuery, VectorQuerySnapshot} from "@google-cloud/firestore";
 
 /**
  * The `DeckRepository` class extends the `FirebaseAdmin` class to provide
@@ -540,9 +540,7 @@ export class DeckRepository extends FirebaseAdmin {
     try {
       // Validate input
       if (!deckData || typeof deckData !== "object") {
-        const error = new Error("The deck data is not valid");
-        error.name = "INVALID_DECK_DATA";
-        throw error;
+        throw new ApiError("The deck data is not valid", 400, {code: "INVALID_DECK_DATA"});
       }
 
       const db = this.getDb();
@@ -550,36 +548,29 @@ export class DeckRepository extends FirebaseAdmin {
       const res = await db.collection("decks").add(deckData);
 
       if (!res || !res.id) {
-        const error = new Error("Failed to create deck, no reference returned");
-        error.name = "DATABASE_CREATE_ERROR";
-        throw error;
+        throw new ApiError("Failed to create deck, no reference returned", 500, {
+          code: "DATABASE_CREATE_ERROR",
+        });
       }
 
       // Destructure the deck data to exclude embedding_field
-      // eslint-disable-next-line camelcase
+      // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
       const {embedding_field, ...deckDataWithoutEmbedding} = deckData;
 
       // access newly created deck ID by `res.id`
       const deck: Deck = ({id: res.id, ...deckDataWithoutEmbedding} as Deck);
 
       return deck;
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === "INVALID_DECK_DATA") {
-          throw error;
-        }
-        if (error.name === "DATABASE_CREATE_ERROR") {
-          throw error;
-        }
-        // Handle other known errors
-        const internalError = new Error("An error occured while creating the deck");
-        internalError.name = "DATABASE_CREATE_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occured while creating the deck");
-        unknownError.name = "CREATE_DECK_UNKNOWN_ERROR";
-        throw unknownError;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      if (error instanceof ApiError) throw error;
+
+      // Wrap any unexpected errors
+      throw new ApiError(
+        "An error occurred while creating the deck",
+        500,
+        {code: "DATABASE_CREATE_ERROR", message: error.message}
+      );
     }
   }
 
@@ -831,7 +822,7 @@ export class DeckRepository extends FirebaseAdmin {
       await db.collection("search_deck_logs").add({
         user_id: userId,
         search_query: searchQuery,
-        embedding: embedding,
+        embedding: FieldValue.vector(embedding),
         searched_at: FirebaseAdmin.getTimeStamp(),
       });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -173,45 +173,46 @@ export class DeckService extends Gemini {
    * @return {Promise<object | void>} A promise resolving to the created deck data object from the repository, or void/throws on error.
    * @throws Will re-throw errors encountered during repository access or data processing.
    */
-  public async createDeck(title: string, userID: string, coverPhoto: string | null = null, description: string, flashcards: Array<{ term: string; definition: string }> | undefined): Promise<object | void> {
-    try {
-      const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
+  public async createDeck(
+    title: string,
+    userID: string,
+    coverPhoto: string | null = null,
+    description: string,
+    flashcards: Array<{ term: string; definition: string }> | undefined): Promise<object | void> {
+    const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
 
-      // Generate embedding for the deck title and description
-      const embedRes = await this.embedDeck(`Deck title: ${title}, Description: ${description}`);
-      const firstEmbedObj = embedRes.embeddings[0];
-      const vector: number[] = firstEmbedObj.values;
+    // Generate embedding for the deck title and description
+    const embedRes = await this.embedDeck(`Deck title: ${title}, Description: ${description}`);
+    const firstEmbedObj = embedRes.embeddings[0];
+    const vector: number[] = firstEmbedObj.values;
 
-      if (!embedRes) {
-        const error = new Error("Failed to create deck, failed to generate embedding");
-        error.name = "DATABASE_CREATE_ERROR";
-        throw error;
-      }
-
-      const deck: Omit<Deck, "id"> = {
-        title: Utils.cleanTitle(title),
-        is_deleted: false,
-        is_private: true,
-        owner_id: userID,
-        cover_photo: coverPhotoRef,
-        created_at: FirebaseAdmin.getTimeStamp(),
-        description: description,
-        flashcard_count: 0,
-        embedding_field: FieldValue.vector(vector),
-      };
-
-      const decks = await this.deckRepository.createDeck(deck);
-
-      if (flashcards && flashcards.length > 0) {
-        const deckID = decks.id;
-        await this.flashcardService.createFlashcards(userID, deckID, flashcards);
-      }
-      return {
-        deck: decks,
-      };
-    } catch (error) {
-      if (error instanceof Error) throw error;
+    if (!embedRes) {
+      const error = new Error("Failed to create deck, failed to generate embedding");
+      error.name = "DATABASE_CREATE_ERROR";
+      throw error;
     }
+
+    const deck: Omit<Deck, "id"> = {
+      title: Utils.cleanTitle(title),
+      is_deleted: false,
+      is_private: true,
+      owner_id: userID,
+      cover_photo: coverPhotoRef,
+      created_at: FirebaseAdmin.getTimeStamp(),
+      description: description,
+      flashcard_count: 0,
+      embedding_field: FieldValue.vector(vector),
+    };
+
+    const decks = await this.deckRepository.createDeck(deck);
+
+    if (flashcards && flashcards.length > 0) {
+      const deckID = decks.id;
+      await this.flashcardService.createFlashcards(userID, deckID, flashcards);
+    }
+    return {
+      deck: decks,
+    };
   }
 
   /**

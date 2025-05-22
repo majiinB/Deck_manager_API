@@ -300,91 +300,55 @@ export class DeckController {
    * @return {Promise<void>} Sends a JSON response.
    */
   public async createDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
-    const baseResponse = new BaseResponse();
-    const errorResponse = new ErrorResponse();
-    try {
-      const validation = createDeckSchema.safeParse(req.body);
+    // --- Input Validations ---
+    const validation = createDeckSchema.safeParse(req.body);
 
-      // --- Input Validations ---
-      if (!validation.success) {
-        const baseResponse = new BaseResponse();
-        const errorList = validation.error.errors.map((zodError) => {
-          const field = zodError.path[0];
-          const errorResponse = new ErrorResponse();
+    if (!validation.success) {
+      const errorList = validation.error.errors.map(({path, message}) => {
+        const field = path[0] as string;
+        let code: string;
 
-          switch (field) {
-          case "title":
-            errorResponse.setError(
-              zodError.message.includes("type") ? "INVALID_DECK_TITLE_TYPE" : "DECK_TITLE_REQUIRED"
-            );
-            errorResponse.setMessage(zodError.message);
-            break;
+        switch (field) {
+        case "title":
+          code = message.includes("type") ? "INVALID_DECK_TITLE_TYPE" : "DECK_TITLE_REQUIRED";
+          break;
+        case "description":
+          code = message.includes("type") ?
+            "INVALID_DECK_DESCRIPTION_TYPE":
+            "DECK_DESCRIPTION_REQUIRED";
+          break;
+        case "coverPhoto":
+          code = message.includes("type") ?
+            "INVALID_DECK_COVERPHOTO_TYPE" :
+            "INVALID_DECK_COVERPHOTO_URL";
+          break;
+        default:
+          code = "VALIDATION_ERROR";
+        }
 
-          case "description":
-            errorResponse.setError(
-              zodError.message.includes("type") ? "INVALID_DECK_DESCRIPTION_TYPE" : "DECK_DESCRIPTION_REQUIRED"
-            );
-            errorResponse.setMessage(zodError.message);
-            break;
-
-          case "coverPhoto":
-            errorResponse.setError(
-              zodError.message.includes("type")? "INVALID_DECK_COVERPHOTO_TYPE" : "INVALID_DECK_COVERPHOTO_URL"
-            );
-            errorResponse.setMessage(zodError.message);
-            break;
-
-          default:
-            errorResponse.setError("VALIDATION_ERROR");
-            errorResponse.setMessage(zodError.message);
-          }
-
-          return errorResponse;
-        });
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occurred during the creation of the flashcard");
-        baseResponse.setData(errorList);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Extract validated data
-      const {title, description, coverPhoto, flashcards} = validation.data;
-      const userID = req.user?.user_id;
-
-      // Call service method
-      const deck = await this.deckService.createDeck(title, userID, coverPhoto, description, flashcards);
-
-      baseResponse.setStatus(201);
-      baseResponse.setMessage("Deck was successfully created");
-      baseResponse.setData(deck);
-
-      res.status(201).json(baseResponse);
-      return;
-    } catch (error) {
-      if (error instanceof Error) {
-        errorResponse.setError(error.name);
-        errorResponse.setMessage(error.message);
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the creation of the deck");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      } else {
-        errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in create deck");
-
-        baseResponse.setStatus(500);
-        baseResponse.setMessage("An unknown error occurred during the creation of a deck");
-        baseResponse.setData(errorResponse);
-
-        res.status(500).json(baseResponse);
-        return;
-      }
+        return {field, code, message};
+      });
+      throw new ApiError(
+        "Deck creation validation failed",
+        400,
+        {errorList}
+      );
     }
+
+    // Extract validated data
+    const {title, description, coverPhoto, flashcards} = validation.data;
+    const userID = req.user?.user_id;
+
+    // Call service method
+    const deck = await this.deckService.createDeck(title, userID, coverPhoto, description, flashcards);
+
+    const baseResponse = new BaseResponse();
+    baseResponse.setStatus(201);
+    baseResponse.setMessage("Deck was successfully created");
+    baseResponse.setData(deck);
+
+    res.status(201).json(baseResponse);
+    return;
   }
 
   /**

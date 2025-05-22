@@ -111,9 +111,7 @@ router.get("/:deckID", async (req: Request, res: Response) => {
  * @returns {Error} 400 - Bad request, missing required fields.
  * @returns {Error} 500 - Internal server error.
  */
-router.post("/", async (req: Request, res: Response) => {
-  await deckController.createDeck(req, res);
-});
+router.post("/", asyncHandler(deckController.createDeck.bind(deckController)));
 
 /**
  * @route POST /v1/decks/save/:deckID

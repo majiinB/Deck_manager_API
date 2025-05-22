@@ -13,6 +13,7 @@ export const logRequest = (req: AuthenticatedRequest, res: Response, next: NextF
     ip: req.ip,
     params: req.params,
     query: req.query,
+    body: req.body,
   });
 
   res.on("finish", () => {
