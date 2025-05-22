@@ -27,58 +27,32 @@
 import * as functions from "firebase-functions";
 import * as dotenv from "dotenv";
 import express from "express";
-import cors, {CorsOptions} from "cors";
 import deckRoutes from "./routes/Routes";
 import {AuthenticatedRequest} from "./interface/AuthenticatedRequest";
 import {BaseResponse} from "./models/BaseResponse";
+import {corsOptions} from "./config/corsOption";
+import cors from "cors";
 import {AuthenticationService} from "./services/AuthenticationService";
+import {logRequest} from "./middleware/loggerMiddleware";
+import {errorHandler} from "./middleware/errorHandler";
 
 // Load environment variables from .env file
 dotenv.config();
-
-/**
- * Configuration options for CORS (Cross-Origin Resource Sharing).
- *
- * This object defines the behavior for handling CORS requests, including
- * dynamically validating the origin of incoming requests.
- *
- * @property origin - A function that determines whether a given origin is allowed
- * to access the resource. It logs the origin of the request and checks it against
- * a predefined list of allowed origins. If the origin is allowed or undefined,
- * the request is permitted; otherwise, an error is returned.
- *
- * @param origin - The origin of the incoming request as a string or undefined.
- * @param callback - A callback function to signal whether the request is allowed.
- *                   It accepts an error (if any) and a boolean indicating permission.
- *
- * @example
- * // Example of an allowed origin
- * const allowedOrigins = ["https://frontend.com"];
- * // If the request comes from "https://frontend.com", it will be allowed.
- *
- * @throws {Error} If the origin is not in the list of allowed origins.
- */
-const corsOptions: CorsOptions = {
-  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    console.log(`CORS Request from: ${origin}`);
-    const allowedOrigins = [process.env.URL_ONE, process.env.URL_TWO];
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true); // Allow request
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-};
 
 const app = express();
 const baseResponse = new BaseResponse();
 const authService = new AuthenticationService();
 
-// Middleware
+// Middlewares
 app.use(cors(corsOptions));
 // TODO: Add rate limiter
 app.use(express.json());
-app.use(authService.verifyFirebaseToken.bind(authService)); // Middleware to verify Firebase token
+
+// Middleware to verify Firebase token
+app.use(authService.verifyFirebaseToken.bind(authService));
+app.use(logRequest);
+
+// Routes
 app.use("/v1/decks", deckRoutes);
 app.get("/v1", (req: AuthenticatedRequest, res) => {
   baseResponse.setStatus(200);
@@ -87,6 +61,8 @@ app.get("/v1", (req: AuthenticatedRequest, res) => {
 
   res.status(200).json(baseResponse);
 });
+
+app.use(errorHandler);
 
 // eslint-disable-next-line camelcase
 export const deck_manager_api = functions.https.onRequest(app);

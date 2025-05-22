@@ -32,6 +32,7 @@ import {ErrorResponse} from "../models/ErrorResponse";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 import {createDeckSchema} from "../schema/createDeckSchema";
 import {logger} from "firebase-functions";
+import {ApiError} from "../helpers/apiError";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -65,76 +66,35 @@ export class DeckController {
    */
   public async getOwnerDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
-    const errorResponse = new ErrorResponse();
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
-      const userID = req.user?.user_id;
 
-      logger.info("User", userID, "retrieving decks", "at", new Date().toISOString());
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    const userID = req.user?.user_id;
 
-      // Validate limit parameter
-      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
-        errorResponse.setError("INVALID_LIMIT_VALUE");
-        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
-        baseResponse.setData(errorResponse);
-
-        logger.warn("User: ", userID, errorResponse.getError(), "limit: ", limit, "at", new Date().toISOString());
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Get pagination token if provided
-      const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
-      // Call service method
-      const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
-
-      // Send success response
-      baseResponse.setStatus(200);
-      baseResponse.setMessage("Successfuly retrieved decks");
-      baseResponse.setData(decks);
-
-      logger.info("User", userID, "sucessfully retrieved owned decks", "at", new Date().toISOString());
-      res.status(200).json(baseResponse);
-      return;
-    } catch (error) {
-      // Handle errors
-      if (error instanceof Error) {
-        errorResponse.setError(error.name);
-        errorResponse.setMessage(error.message);
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        logger.error(
-          "User: ", req.user?.user_id,
-          "Failed Retrieving owned decks due to error",
-          errorResponse, error,
-          "at", new Date().toISOString()
-        );
-        res.status(400).json(baseResponse);
-        return;
-      } else {
-        errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in get owner decks");
-
-        baseResponse.setStatus(500);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        logger.error(
-          "User: ", req.user?.user_id,
-          "Failed Retrieving owned decks due to error",
-          errorResponse, error,
-          "at", new Date().toISOString()
-        );
-        res.status(500).json(baseResponse);
-        return;
-      }
+    // Validate limit parameter
+    if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      throw new ApiError(
+        "Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.",
+        400,
+        {
+          userID,
+          limit,
+          errorCode: "INVALID_LIMIT_VALUE",
+        }
+      );
     }
+
+    // Get pagination token if provided
+    const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
+    // Call service method
+    const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
   }
 
   /**
