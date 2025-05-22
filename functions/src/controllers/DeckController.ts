@@ -31,7 +31,6 @@ import {BaseResponse} from "../models/BaseResponse";
 import {ErrorResponse} from "../models/ErrorResponse";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 import {createDeckSchema} from "../schema/createDeckSchema";
-import {logger} from "firebase-functions";
 import {ApiError} from "../helpers/apiError";
 
 /**
@@ -113,76 +112,6 @@ export class DeckController {
   }
 
   /**
-   * Handles the request to search for decks based on a search query.
-   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
-   * Responds with paginated deck data or an error.
-   *
-   * @param {Request} req - The HTTP request object containing search parameters.
-   * @param {Response} res - The HTTP response object.
-   * @return {Promise<void>} Sends a JSON response.
-   */
-  public async searchDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
-    const baseResponse = new BaseResponse();
-    const errorResponse = new ErrorResponse();
-    try {
-      const fitlers = ["MY_DECKS", "SAVED_DECKS", "PUBLIC_DECKS"];
-      const filter = req.query.filter as string;
-      const searchFilter = fitlers.includes(filter) ? filter : "PUBLIC_DECKS";
-
-      const searchQuery = req.query.searchQuery as string;
-      const searchQueryRegex = /^[a-zA-Z0-9\s]+$/;
-      const limit = 50;
-      const userID = req.user?.user_id;
-
-      // Validate search query
-      if (!searchQuery || !searchQueryRegex.test(searchQuery)) {
-        errorResponse.setError("INVALID_SEARCH_QUERY");
-        errorResponse.setMessage("The search query should be of type string and not empty or blank");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Call service method
-      const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchFilter);
-
-      // Send success response
-      baseResponse.setStatus(200);
-      baseResponse.setMessage("Successfuly retrieved decks");
-      baseResponse.setData(decks);
-
-      res.status(200).json(baseResponse);
-    } catch (error) {
-      // Handle errors
-      if (error instanceof Error) {
-        errorResponse.setError(error.name);
-        errorResponse.setMessage(error.message);
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      } else {
-        errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in search decks");
-
-        baseResponse.setStatus(500);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(500).json(baseResponse);
-        return;
-      }
-    }
-  }
-
-  /**
    * Handles the request to fetch all decks that are not private (are published).
    * Validates query parameters (limit) and uses DeckService for retrieval.
    * Responds with paginated public deck data or an error.
@@ -231,76 +160,83 @@ export class DeckController {
    */
   public async getSavedDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
-    const errorResponse = new ErrorResponse();
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
-      const userID = req.user?.user_id;
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    const userID = req.user?.user_id;
 
-      logger.info("User", userID, "retrieving saved decks", "at", new Date().toISOString());
-
-      // Validate limit parameter
-      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
-        errorResponse.setError("INVALID_LIMIT_VALUE");
-        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50");
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks owned by a specific user");
-        baseResponse.setData(errorResponse);
-
-        logger.warn("User: ", userID, errorResponse.getError(), "limit: ", limit, "at", new Date().toISOString());
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Get pagination token if provided
-      const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
-      // Call service method
-      const decks = await this.deckService.getSavedDeck(userID, limit, nextPageToken);
-
-      // Send success response
-      baseResponse.setStatus(200);
-      baseResponse.setMessage("Successfuly retrieved decks");
-      baseResponse.setData(decks);
-
-      logger.info("User", userID, "sucessfully retrieved saved decks", "at", new Date().toISOString());
-      res.status(200).json(baseResponse);
-      return;
-    } catch (error) {
-      // Handle errors
-      if (error instanceof Error) {
-        errorResponse.setError(error.name);
-        errorResponse.setMessage(error.message);
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of saved decks");
-        baseResponse.setData(errorResponse);
-
-        logger.error(
-          "User: ", req.user?.user_id,
-          "Failed Retrieving saved decks due to error",
-          errorResponse, error,
-          "at", new Date().toISOString()
-        );
-        res.status(400).json(baseResponse);
-        return;
-      } else {
-        errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in get saved decks");
-
-        baseResponse.setStatus(500);
-        baseResponse.setMessage("An error has occured during the retrieval of saved decks");
-        baseResponse.setData(errorResponse);
-
-        logger.error(
-          "User: ", req.user?.user_id,
-          "Failed Retrieving saved decks due to error",
-          errorResponse, error,
-          "at", new Date().toISOString()
-        );
-        res.status(500).json(baseResponse);
-        return;
-      }
+    if (!userID) {
+      throw new ApiError("Unauthorized. Missing user ID.", 401);
     }
+
+    // Validate limit parameter
+    if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      throw new ApiError(
+        "Invalid limit value. It must be a positive number between 1 and 50.",
+        400,
+        {userID, limit, errorCode: "INVALID_LIMIT_VALUE"}
+      );
+    }
+
+    // Get pagination token if provided
+    const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
+    // Call service method
+    const decks = await this.deckService.getSavedDeck(userID, limit, nextPageToken);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
+   * Handles the request to search for decks based on a search query.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async searchDeck(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const limit = 10;
+    const userID = req.user?.user_id;
+
+    // Determine filter
+    const filters = ["MY_DECKS", "SAVED_DECKS", "PUBLIC_DECKS"];
+    const filter = req.query.filter as string;
+    const searchFilter = filters.includes(filter) ? filter : "PUBLIC_DECKS";
+    if (!filters.includes(filter)) {
+      throw new ApiError(
+        `Invalid filter value. Allowed filters: ${filters.join(", ")}`,
+        400,
+        {filter, errorCode: "INVALID_FILTER_VALUE"}
+      );
+    }
+
+    // Validate search query
+    const searchQuery = req.query.searchQuery as string;
+    const searchQueryRegex = /^[a-zA-Z0-9\s]+$/;
+    if (!searchQuery || !searchQueryRegex.test(searchQuery)) {
+      throw new ApiError(
+        "The search query should be a non-empty string containing only letters, numbers, or spaces.",
+        400,
+        {searchQuery, errorCode: "INVALID_SEARCH_QUERY"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.searchDeck(userID, searchQuery, limit, searchFilter);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
   }
 
   /**

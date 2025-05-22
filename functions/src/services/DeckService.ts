@@ -21,7 +21,7 @@
  * @classdesc Handles business logic and data orchestration for deck operations, acting as an intermediary between the controller and the repository.
  * @author Arthur M. Artugue
  * @created 2024-03-26
- * @updated 2025-05-16
+ * @updated 2025-05-22
  */
 
 import {DeckRepository} from "../repositories/DeckRepository";
@@ -31,6 +31,7 @@ import {Deck, SaveDeck} from "../interface/Deck";
 import {FlashcardService} from "../services/FlashCardService";
 import {Gemini} from "../config/Gemini";
 import {FieldValue} from "firebase-admin/firestore";
+import {logger} from "firebase-functions";
 
 /**
  * Service class responsible for handling operations related to decks.
@@ -102,12 +103,8 @@ export class DeckService extends Gemini {
    * @throws Will re-throw errors encountered during repository access.
    */
   public async getSavedDeck(userID: string, limit: number, nextPageToken: string | null): Promise<object | void> {
-    try {
-      const decks = await this.deckRepository.getSavedDecks(userID, limit, nextPageToken);
-      return decks;
-    } catch (error) {
-      if (error instanceof Error) throw error;
-    }
+    const decks = await this.deckRepository.getSavedDecks(userID, limit, nextPageToken);
+    return decks;
   }
 
   /**
@@ -140,24 +137,26 @@ export class DeckService extends Gemini {
    * @throws Will re-throw errors encountered during repository access.
    */
   public async searchDeck(userID: string, query: string, limit:number, filter: string): Promise<object | void> {
-    try {
-      let decks;
-      const embedResponse = await this.embedQuery(query);
-      const firstEmbedObj = embedResponse.embeddings[0];
-      const embeddedQuery: number[] = firstEmbedObj.values;
+    let decks;
+    const embedResponse = await this.embedQuery(query);
+    const firstEmbedObj = embedResponse.embeddings[0];
+    const embeddedQuery: number[] = firstEmbedObj.values;
 
-      if (filter === "MY_DECKS") {
-        decks = await this.deckRepository.searchOwnerDecks(userID, query, embeddedQuery, limit);
-      } else if (filter === "SAVED_DECKS") {
-        decks = await this.deckRepository.searchSavedDecks(userID, embeddedQuery, limit);
-      } else if (filter === "PUBLIC_DECKS") {
-        decks = await this.deckRepository.searchPublicDecks(userID, embeddedQuery, limit);
-      }
+    // 2. Kick off the log write — but don’t await it
+    void this.deckRepository.logSearchDeck(userID, query, embeddedQuery)
+      .catch((err) => {
+        logger.error("Error writing log to Firestore:", err);
+      });
 
-      return decks;
-    } catch (error) {
-      if (error instanceof Error) throw error;
+    if (filter === "MY_DECKS") {
+      decks = await this.deckRepository.searchOwnerDecks(userID, query, embeddedQuery, limit);
+    } else if (filter === "SAVED_DECKS") {
+      decks = await this.deckRepository.searchSavedDecks(userID, embeddedQuery, limit);
+    } else if (filter === "PUBLIC_DECKS") {
+      decks = await this.deckRepository.searchPublicDecks(userID, embeddedQuery, limit);
     }
+
+    return decks;
   }
 
   /**

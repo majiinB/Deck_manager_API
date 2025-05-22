@@ -12,11 +12,12 @@
  *
  * @author Arthur M. Artugue
  * @created 2025-05-11
- * @updated 2025-05-11
+ * @updated 2025-05-22
  */
 
 import {GoogleGenAI} from "@google/genai";
 import * as dotenv from "dotenv";
+import {ApiError} from "../helpers/apiError";
 
 dotenv.config();
 
@@ -66,9 +67,13 @@ export class Gemini {
         },
       });
       return response;
-    } catch (error) {
-      console.error("Error embedding text:", error);
-      throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+      throw new ApiError(
+        "An error occurred while embedding deck.",
+        500,
+        {errorCode: "DECK_EMBEDDING_ERROR", message: error.message}
+      );
     }
   };
 
@@ -88,9 +93,13 @@ export class Gemini {
         },
       });
       return response;
-    } catch (error) {
-      console.error("Error embedding text:", error);
-      throw error;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+      throw new ApiError(
+        "An error occurred while embedding query.",
+        500,
+        {errorCode: "QUERY_EMBEDDING_ERROR", message: error.message}
+      );
     }
   };
 }

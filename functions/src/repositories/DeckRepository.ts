@@ -215,6 +215,7 @@ export class DeckRepository extends FirebaseAdmin {
       // Fetch all referenced deck documents
       const deckSnapshots = await Promise.all(deckRefs.map((ref) => ref.get()));
 
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       const ownerIds = deckSnapshots.map((deckSnap) => deckSnap.exists ? deckSnap.data()!.owner_id : null).filter(Boolean);
       const ownerMap: Record<string, string> = {};
 
@@ -232,7 +233,7 @@ export class DeckRepository extends FirebaseAdmin {
         const deckData = deckSnap.exists ? deckSnap.data() : null;
 
         // strip out embedding_field
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...raw} = deckData as DeckRaw;
         return {
           id: deckSnap.id,
@@ -248,17 +249,13 @@ export class DeckRepository extends FirebaseAdmin {
         decks,
         nextPageToken: nextToken,
       };
-    } catch (error) {
-      console.log(error);
-      if (error instanceof Error) {
-        const internalError = new Error("An error occurred while fetching the saved decks.");
-        internalError.name = "DATABASE_FETCH_SAVED_DECKS_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occurred while fetching the saved decks.");
-        unknownError.name = "GET_SAVED_DECKS_UNKNOWN_ERROR";
-        throw unknownError;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      throw new ApiError(
+        "An error occurred while fetching saved decks.",
+        500,
+        {userID, errorCode: "DATABASE_FETCH_SAVED_DECKS_ERROR", message: error.message}
+      );
     }
   }
 
@@ -322,7 +319,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       // Extract deck data
       const decks = mergedDocs.map((doc)=> {
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...raw} = doc.data() as DeckRaw;
 
         return {
@@ -333,16 +330,13 @@ export class DeckRepository extends FirebaseAdmin {
       });
 
       return {decks};
-    } catch (error) {
-      if (error instanceof Error) {
-        const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "DATABASE_FETCH_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occured while fetching the decks");
-        unknownError.name = "GET_DECK_UNKNOWN_ERROR";
-        throw unknownError;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+      throw new ApiError(
+        "An error occurred while searching owner decks.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
     }
   }
 
@@ -388,7 +382,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       // Extract deck data
       const decks = vectorQueryResults.docs.map((doc)=> {
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
 
         return {
@@ -399,17 +393,13 @@ export class DeckRepository extends FirebaseAdmin {
       });
 
       return {decks};
-    } catch (error) {
-      console.log(error);
-      if (error instanceof Error) {
-        const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "DATABASE_FETCH_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occured while fetching the decks");
-        unknownError.name = "GET_DECK_UNKNOWN_ERROR";
-        throw unknownError;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error : any) {
+      throw new ApiError(
+        "An error occurred while searching public decks.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
     }
   }
 
@@ -460,7 +450,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       // 4. Build response, stripping embedding_field
       const decks = vectorResults.docs.map((doc) => {
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
         return {
           id: doc.id,
@@ -470,15 +460,13 @@ export class DeckRepository extends FirebaseAdmin {
       });
 
       return {decks};
-    } catch (error) {
-      if (error instanceof Error) {
-        const internalError = new Error("An error occurred while searching saved decks");
-        internalError.name = "DATABASE_FETCH_ERROR";
-        throw internalError;
-      }
-      const unknownError = new Error("An unknown error occurred while searching saved decks");
-      unknownError.name = "SEARCH_SAVED_DECKS_UNKNOWN_ERROR";
-      throw unknownError;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error : any) {
+      throw new ApiError(
+        "An error occurred while searching saved decks.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
     }
   }
 
@@ -825,6 +813,34 @@ export class DeckRepository extends FirebaseAdmin {
         unknownError.name = "DELETE_DECKS_UNKNOWN_ERROR";
         throw unknownError;
       }
+    }
+  }
+
+  /**
+   * Logs a deck search action to Firestore.
+   *
+   * @param {string} userId - The ID of the user who performed the search.
+   * @param {string} searchQuery - The search query used by the user.
+   * @param {number[]} embedding - The embedding vector associated with the search.
+   * @return {Promise<void>} A promise that resolves when the log entry is created.
+   * @throws {Error} Throws custom errors (SEARCH_LOG_WRITE_ERROR) on failure.
+   */
+  public async logSearchDeck(userId: string, searchQuery: string, embedding: number[] ): Promise<void> {
+    try {
+      const db = this.getDb(); // your Firestore instance
+      await db.collection("search_deck_logs").add({
+        user_id: userId,
+        search_query: searchQuery,
+        embedding: embedding,
+        searched_at: FirebaseAdmin.getTimeStamp(),
+      });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      throw new ApiError(
+        "Failed to log deck search",
+        500,
+        {errorCode: "SEARCH_LOG_WRITE_ERROR", message: err.message}
+      );
     }
   }
 }

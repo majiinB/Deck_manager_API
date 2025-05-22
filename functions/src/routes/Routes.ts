@@ -66,15 +66,13 @@ router.get("/", asyncHandler(deckController.getOwnerDecks.bind(deckController)))
 router.get("/public", asyncHandler(deckController.getPublicDecks.bind(deckController)));
 
 /**
- * @route GET /v1/decks/
- * @description Fetches all decks.
+ * @route GET /v1/decks/saved
+ * @description Fetches all user saved decks.
  * @group Decks - Operations related to flashcard decks
  * @returns {Object} 200 - A JSON object containing all decks
  * @returns {Error} 500 - Internal Server Error
  */
-router.get("/saved", async (req: Request, res: Response) => {
-  await deckController.getSavedDecks(req, res);
-});
+router.get("/saved", asyncHandler(deckController.getSavedDecks.bind(deckController)));
 
 /**
  * @route GET /v1/decks/search
@@ -83,9 +81,7 @@ router.get("/saved", async (req: Request, res: Response) => {
  * @returns {Object} 200 - A JSON object containing all decks
  * @returns {Error} 500 - Internal Server Error
  */
-router.get("/search", async (req: Request, res: Response) => {
-  await deckController.searchDeck(req, res);
-});
+router.get("/search", asyncHandler(deckController.searchDeck.bind(deckController)));
 
 /**
  * @route GET /v1/decks/:deckID
