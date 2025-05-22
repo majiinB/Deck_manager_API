@@ -144,7 +144,6 @@ export class DeckRepository extends FirebaseAdmin {
       // Extract unique owner IDs
       const ownerIds = snapshot.docs.map((doc) => doc.data().owner_id);
       const ownerMap: Record<string, string> = {};
-
       // Fetch user names in batches if there are more than 10 ownerIds
       const batchSize = 10;
       for (let i = 0; i < ownerIds.length; i += batchSize) {
@@ -153,9 +152,9 @@ export class DeckRepository extends FirebaseAdmin {
         Object.assign(ownerMap, userNames);
       }
 
-      // Extract deck data, stripping out embedding_field
+      // Extract deck data, stripping out embedding_field, Build result
       const decks = snapshot.docs.map((doc) => {
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
         return {
           id: doc.id,
@@ -172,16 +171,13 @@ export class DeckRepository extends FirebaseAdmin {
         decks,
         nextPageToken: nextToken,
       };
-    } catch (error) {
-      if (error instanceof Error) {
-        const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "DATABASE_FETCH_ERROR";
-        throw internalError;
-      } else {
-        const unknownError = new Error("An unknown error occured while fetching the decks");
-        unknownError.name = "GET_PUBLIC_DECK_UNKNOWN_ERROR";
-        throw unknownError;
-      }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+      throw new ApiError(
+        "An error occurred while fetching public decks.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
     }
   }
 

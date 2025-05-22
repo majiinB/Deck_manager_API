@@ -187,64 +187,37 @@ export class DeckController {
    * Validates query parameters (limit) and uses DeckService for retrieval.
    * Responds with paginated public deck data or an error.
    *
-   * @param {Request} req - The HTTP request object.
+   * @param {AuthenticatedRequest} req - The HTTP request object.
    * @param {Response} res - The HTTP response object.
    * @return {Promise<void>} Sends a JSON response.
    */
-  public async getPublicDecks(req: Request, res: Response): Promise<void> {
+  public async getPublicDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
     const baseResponse = new BaseResponse();
-    const errorResponse = new ErrorResponse();
-    try {
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-      // Validate limit parameter
-      if (isNaN(limit) || (limit <= 1 || limit > 50)) {
-        errorResponse.setError("INVALID_LIMIT_VALUE");
-        errorResponse.setMessage("Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.");
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
 
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      }
-
-      // Get pagination token if provided
-      const nextPageToken = req.query.pageToken ? (req.query.pageToken as string) : null;
-      // Call service method
-      const decks = await this.deckService.getPublicDecks(limit, nextPageToken);
-
-      // Send success response
-      baseResponse.setStatus(200);
-      baseResponse.setMessage("Successfuly retrieved decks");
-      baseResponse.setData(decks);
-
-      res.status(200).json(baseResponse);
-    } catch (error) {
-      if (error instanceof Error) {
-        // Handle errors
-        errorResponse.setError(error.name);
-        errorResponse.setMessage(error.message);
-
-        baseResponse.setStatus(400);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(400).json(baseResponse);
-        return;
-      } else {
-        errorResponse.setError("UNKNOWN_ERROR");
-        errorResponse.setMessage("An unknown error occurred in get decks");
-
-        baseResponse.setStatus(500);
-        baseResponse.setMessage("An error has occured during the retrieval of decks");
-        baseResponse.setData(errorResponse);
-
-        res.status(500).json(baseResponse);
-        return;
-      }
+    // Validate limit parameter
+    if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      throw new ApiError(
+        "Invalid limit value. It must be a positive number between 1 and 50.",
+        400,
+        {limit, errorCode: "INVALID_LIMIT_VALUE"}
+      );
     }
+
+    // Get pagination token if provided
+    const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
+
+    // Call service method
+    const decks = await this.deckService.getPublicDecks(limit, nextPageToken);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
   }
 
   /**

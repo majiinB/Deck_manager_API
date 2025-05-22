@@ -63,9 +63,7 @@ router.get("/", asyncHandler(deckController.getOwnerDecks.bind(deckController)))
  * @returns {Object} 200 - A JSON object containing all decks
  * @returns {Error} 500 - Internal Server Error
  */
-router.get("/public", async (req: Request, res: Response) => {
-  await deckController.getPublicDecks(req, res);
-});
+router.get("/public", asyncHandler(deckController.getPublicDecks.bind(deckController)));
 
 /**
  * @route GET /v1/decks/

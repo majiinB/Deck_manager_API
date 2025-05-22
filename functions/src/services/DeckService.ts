@@ -87,12 +87,8 @@ export class DeckService extends Gemini {
    * @throws Will re-throw errors encountered during repository access.
    */
   public async getPublicDecks(limit: number, nextPageToken: string | null): Promise<object | void> {
-    try {
-      const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
-      return decks;
-    } catch (error) {
-      if (error instanceof Error) throw error;
-    }
+    const decks = await this.deckRepository.getPublicDecks(limit, nextPageToken);
+    return decks;
   }
 
   /**
