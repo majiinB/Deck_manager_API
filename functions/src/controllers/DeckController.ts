@@ -101,7 +101,7 @@ export class DeckController {
     }
 
     // Call service method
-    const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken);
+    const decks = await this.deckService.getOwnerDeck(userID, limit, nextPageToken, orderBy);
 
     // Send success response
     baseResponse.setStatus(200);

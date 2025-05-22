@@ -1,5 +1,5 @@
 import {logger} from "firebase-functions";
-import {Response} from "express";
+import {NextFunction, Response} from "express";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 
 /**
@@ -8,8 +8,8 @@ import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
  * @param req - The request object.
  * @param res - The response object.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const errorHandler = (err: any, req: AuthenticatedRequest, res: Response) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
+export const errorHandler = (err: any, req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const statusCode = err.statusCode || 500;
 
   logger.error("Error encountered", {

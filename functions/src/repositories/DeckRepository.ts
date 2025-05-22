@@ -26,6 +26,7 @@
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
+import {ApiError} from "../helpers/apiError";
 import {Deck, DeckRaw, SaveDeck} from "../interface/Deck";
 import {Utils} from "../utils/utils";
 import {UserRepository} from "./UserRepository";
@@ -47,17 +48,19 @@ export class DeckRepository extends FirebaseAdmin {
    * @param {string} userID - The ID of the user whose decks to fetch.
    * @param {number} limit - The maximum number of decks to return per page.
    * @param {string | null} [nextPageToken=null] - The document ID to start after for pagination.
+   * @param {string} orderBy - The field to order the results by.
    * @return {Promise<any[]>} A promise resolving to an object containing the decks array and the next page token.
    * @throws {Error} Throws custom errors (e.g., INTERNAL_SERVER_ERROR) on failure.
    */
-  public async getOwnerDecks(userID: string, limit: number, nextPageToken: string | null = null): Promise<object> {
+  public async getOwnerDecks(userID: string, limit: number, nextPageToken: string | null = null, orderBy: string): Promise<object> {
     try {
       const db = this.getDb();
+      const order = (orderBy === "created_at") ? "desc" : "asc";
       let query = db
         .collection("decks")
         .where("owner_id", "==", userID) // Filter by owner_id
         .where("is_deleted", "==", false) // Filter out deleted decks
-        .orderBy("title") // Order results
+        .orderBy(orderBy, order) // Order results
         .limit(limit); // Limit results
 
       if (nextPageToken) {
@@ -75,7 +78,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       // Extract deck data, stripping out embedding_field
       const decks = snapshot.docs.map((doc) => {
-        // eslint-disable-next-line camelcase
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
         const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
         return {
           id: doc.id,
@@ -94,13 +97,17 @@ export class DeckRepository extends FirebaseAdmin {
       };
     } catch (error) {
       if (error instanceof Error) {
-        const internalError = new Error("An error occured while fetching the decks");
-        internalError.name = "DATABASE_FETCH_ERROR";
-        throw internalError;
+        throw new ApiError(
+          "An error occurred while fetching the decks.",
+          500,
+          {userID, errorMessage: error.message, errorCode: "DATABASE_FETCH_ERROR"}
+        );
       } else {
-        const unknownError = new Error("An unknown error occurred while fetching the decks");
-        unknownError.name = "GET_DECK_UNKNOWN_ERROR";
-        throw unknownError;
+        throw new ApiError(
+          "An unknown error occurred while fetching the decks.",
+          500,
+          {userID, errorCode: "UNKNOWN_DECK_FETCH_ERROR"}
+        );
       }
     }
   }

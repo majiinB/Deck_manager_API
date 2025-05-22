@@ -36,6 +36,7 @@ import {DeckService} from "../services/DeckService";
 import {DeckRepository} from "../repositories/DeckRepository";
 import {FlashcardService} from "../services/FlashCardService";
 import {FlashcardRepository} from "../repositories/FlashcardRepository";
+import {asyncHandler} from "../middleware/asyncHandler";
 
 // eslint-disable-next-line new-cap
 const router = Router();
@@ -53,9 +54,7 @@ const flashcardController = new FlashcardController(flashcardService);
  * @returns {Object} 200 - A JSON object containing all decks
  * @returns {Error} 500 - Internal Server Error
  */
-router.get("/", async (req: Request, res: Response) => {
-  await deckController.getOwnerDecks(req, res);
-});
+router.get("/", asyncHandler(deckController.getOwnerDecks.bind(deckController)));
 
 /**
  * @route GET /v1/decks/public
