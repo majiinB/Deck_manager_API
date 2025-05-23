@@ -182,6 +182,77 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
+   * Retrieves a paginated list of non-deleted decks owned by a specific user from Firestore.
+   * Orders decks by title.
+   *
+   * @param {string} userID - The ID of the user whose decks to fetch.
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @param {string | null} [nextPageToken=null] - The document ID to start after for pagination.
+   * @param {string} orderBy - The field to order the results by.
+   * @return {Promise<any[]>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., INTERNAL_SERVER_ERROR) on failure.
+   */
+  public async getOwnerDeletedDecks(userID: string, limit: number, nextPageToken: string | null = null, orderBy: string): Promise<object> {
+    try {
+      const db = this.getDb();
+      const order = (orderBy === "created_at") ? "desc" : "asc";
+      let query = db
+        .collection("decks")
+        .where("owner_id", "==", userID) // Filter by owner_id
+        .where("is_deleted", "==", true) // Filter out deleted decks
+        .orderBy(orderBy, order) // Order results
+        .limit(limit); // Limit results
+
+      if (nextPageToken) {
+        const lastDocSnapShot = await db.collection("decks").doc(nextPageToken).get();
+        if (lastDocSnapShot.exists) {
+          query = query.startAfter(lastDocSnapShot);
+        }
+      }
+
+      const [snapshot, userName] = await Promise.all([
+        query.get(),
+        this.userRepository.getOwnerNames([userID]),
+      ]);
+
+
+      // Extract deck data, stripping out embedding_field
+      const decks = snapshot.docs.map((doc) => {
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
+        const {embedding_field, ...deckDataWithoutEmbedding} = doc.data() as DeckRaw;
+        return {
+          id: doc.id,
+          owner_name: userName[userID],
+          ...deckDataWithoutEmbedding,
+        };
+      });
+
+      // Get nextPageToken (last document ID)
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      const nextToken = lastDoc ? lastDoc.id : null;
+
+      return {
+        decks,
+        nextPageToken: nextToken,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw new ApiError(
+          "An error occurred while fetching the decks.",
+          500,
+          {userID, errorMessage: error.message, errorCode: "DATABASE_FETCH_ERROR"}
+        );
+      } else {
+        throw new ApiError(
+          "An unknown error occurred while fetching the decks.",
+          500,
+          {userID, errorCode: "UNKNOWN_DECK_FETCH_ERROR"}
+        );
+      }
+    }
+  }
+
+  /**
    * Retrieves a paginated list of saved decks for a specific user from Firestore.
    * Joins deck info for each saved deck.
    *

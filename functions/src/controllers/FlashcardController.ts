@@ -123,7 +123,7 @@ export class FlashcardController {
     const baseResponse = new BaseResponse();
     const errorResponse = new ErrorResponse();
     try {
-      const limit = req.query.numOfCards ? parseInt(req.query.limit as string, 10) : null;
+      const limit = req.query.numOfCards ? parseInt(req.query.numOfCards as string, 10) : null;
       const deckID = req.params.deckID;
 
       if (limit !== null) {

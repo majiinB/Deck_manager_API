@@ -150,6 +150,63 @@ export class DeckController {
   }
 
   /**
+   * Handles the request to fetch all deleted decks that an owner owns.
+   * Validates query parameters (limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object, potentially including authenticated user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async getOwnerDeletedDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    const userID = req.user?.user_id;
+
+    if (!userID) {
+      throw new ApiError("User ID is required to retrieve decks", 400, {
+        userID,
+        errorCode: "USER_ID_REQUIRED",
+      });
+    }
+
+    // Validate limit parameter
+    if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      throw new ApiError(
+        "Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.",
+        400,
+        {userID, limit, errorCode: "INVALID_LIMIT_VALUE"}
+      );
+    }
+
+    // Get the page token if provided
+    const nextPageToken = req.query.nextPageToken ? (req.query.nextPageToken as string) : null;
+
+    // Get the filter if provided
+    const orderBy = req.query.orderBy ? (req.query.orderBy as string) : "title";
+    const validOrderByFields = ["title", "created_at"];
+    if (!validOrderByFields.includes(orderBy)) {
+      throw new ApiError(
+        `Invalid orderBy value. Allowed values: ${validOrderByFields.join(", ")}.`,
+        400,
+        {orderBy, errorCode: "INVALID_ORDERBY_VALUE"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.getOwnerDeletedDeck(userID, limit, nextPageToken, orderBy);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
    * Handles the request to fetch all saved decks of an owner.
    * Validates query parameters (limit) and uses DeckService for retrieval.
    * Responds with paginated deck data or an error.

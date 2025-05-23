@@ -66,6 +66,15 @@ router.get("/", asyncHandler(deckController.getOwnerDecks.bind(deckController)))
 router.get("/public", asyncHandler(deckController.getPublicDecks.bind(deckController)));
 
 /**
+ * @route GET /v1/decks/deleted
+ * @description Fetches all deleted decks (only flagged as deleted).
+ * @group Decks - Operations related to flashcard decks
+ * @returns {Object} 200 - A JSON object containing all decks
+ * @returns {Error} 500 - Internal Server Error
+ */
+router.get("/deleted", asyncHandler(deckController.getOwnerDeletedDecks.bind(deckController)));
+
+/**
  * @route GET /v1/decks/saved
  * @description Fetches all user saved decks.
  * @group Decks - Operations related to flashcard decks
