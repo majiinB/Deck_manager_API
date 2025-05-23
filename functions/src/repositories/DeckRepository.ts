@@ -572,7 +572,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       // Extract deck data
 
-      // eslint-disable-next-line camelcase
+      // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
       const {embedding_field, ...deckDataWithoutEmbedding} = deckSnap.data() as DeckRaw;
 
       const ownerMap = deckDataWithoutEmbedding ? await this.userRepository.getOwnerNames([deckDataWithoutEmbedding.owner_id]) : {};
