@@ -93,6 +93,13 @@ router.get("/saved", asyncHandler(deckController.getSavedDecks.bind(deckControll
 router.get("/search", asyncHandler(deckController.searchDeck.bind(deckController)));
 
 /**
+ * @route GET api/v1/decks/recommend
+ * @description Recommends public decks based on the user's preferences.
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.get("/recommend", asyncHandler(deckController.recommendPublicDecks.bind(deckController)));
+
+/**
  * @route GET /v1/decks/:deckID
  * @description Fetches a specific deck by its unique identifier.
  * @group Decks - Operations related to flashcard decks

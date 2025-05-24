@@ -29,6 +29,7 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {ApiError} from "../helpers/apiError";
 import {Deck, DeckRaw, SaveDeck} from "../interface/Deck";
 import {Utils} from "../utils/utils";
+import {QuizRepository} from "./QuizRepository";
 import {UserRepository} from "./UserRepository";
 import {FieldValue, VectorQuery, VectorQuerySnapshot} from "@google-cloud/firestore";
 
@@ -40,6 +41,7 @@ import {FieldValue, VectorQuery, VectorQuerySnapshot} from "@google-cloud/firest
  */
 export class DeckRepository extends FirebaseAdmin {
   userRepository : UserRepository = new UserRepository();
+  quizRepository : QuizRepository = new QuizRepository();
 
   /**
    * Retrieves a paginated list of non-deleted decks owned by a specific user from Firestore.
@@ -541,6 +543,86 @@ export class DeckRepository extends FirebaseAdmin {
     }
   }
 
+  /**
+   * Retrieves decks based on user query (From the owners deck)
+   *
+   * @param {string} userID - The ID of the user whose decks to fetch.
+   * @param {number} query - The search query to filter decks.
+   * @param {number[]} vectorQuery - The embedding vector to search against.
+   * @param {number} limit - The maximum number of decks to return per page.
+   * @return {Promise<PaginatedDecksResponse>} A promise resolving to an object containing the decks array and the next page token.
+   * @throws {Error} Throws custom errors (e.g., DATABASE_FETCH_ERROR) on failure.
+   */
+  public async searchDeletedDecks(userID: string, query: string, vectorQuery: number[], limit: number): Promise<object> {
+    try {
+      const db = this.getDb();
+      const collection = db.collection("decks");
+
+      // Vector Query to find nearest decks
+      const preFilteredVectorQuery : VectorQuery = collection
+        .where("owner_id", "==", userID) // Filter by owner_id
+        .where("is_deleted", "==", true)
+        .findNearest({
+          vectorField: "embedding_field",
+          queryVector: vectorQuery,
+          limit: limit,
+          distanceMeasure: "COSINE",
+          distanceThreshold: 0.41,
+        });
+
+      // Exact title lookup
+      const cleanedQuery = Utils.cleanTitle(query);
+
+      // Exact‐title lookup on those same IDs
+      const exactTitleQuery = db
+        .collection("decks")
+        .where("owner_id", "==", userID)
+        .where("title", "==", cleanedQuery)
+        .where("is_deleted", "==", true);
+
+      const ownerMap: Record<string, string> = {};
+
+      const [vectorQueryResults, exactTitleQueryResults, userName] = await Promise.all([
+        preFilteredVectorQuery.get(),
+        exactTitleQuery.get(),
+        this.userRepository.getOwnerNames([userID]),
+      ]);
+
+
+      // Merge IDs exact matches
+      const exactIDs = new Set(exactTitleQueryResults.docs.map((d) => d.id));
+      console.log(`Exact IDs: ${exactIDs}`);
+
+      const mergedDocs = [
+        // exact‐match docs
+        ...exactTitleQueryResults.docs,
+        // then vector docs that aren’t already in exactIDs
+        ...vectorQueryResults.docs.filter((d) => !exactIDs.has(d.id)),
+      ].slice(0, limit);
+
+      // Extract deck data
+      const decks = mergedDocs.map((doc)=> {
+        // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
+        const {embedding_field, ...raw} = doc.data() as DeckRaw;
+
+        return {
+          id: doc.id,
+          owner_name: ownerMap[raw.owner_id] || userName[userID],
+          ...raw,
+        };
+      });
+
+      return {decks};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error:any) {
+      throw new ApiError(
+        "An error occurred while searching owner deleted decks.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
+    }
+  }
+
 
   /**
    * Retrieves a specific deck document by its ID from Firestore.
@@ -858,7 +940,8 @@ export class DeckRepository extends FirebaseAdmin {
         }
 
         // TODO: Check if the user role is admin
-        await deckRef.delete();
+        await db.recursiveDelete(deckRef);
+        await this.quizRepository.deleteRelatedQuizzesByDeck(deckID);
         console.log(`Deck with ID ${deckID} has been deleted.`);
       }
     } catch (error) {
@@ -879,6 +962,94 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
+ * Recommend public decks for a user based on their recent search queries.
+ *
+ * @param {string} userID - The ID of the user to recommend for.
+ * @param {number} limit - The maximum number of recommended decks to return.
+ * @return {Promise<object>} A promise resolving to an object containing recommended decks.
+ * @throws {Error} Throws custom errors on failure.
+ */
+  public async recommendPublicDecks(userID: string, limit: number): Promise<object> {
+    try {
+      const db = this.getDb();
+      const searchLogsCollection = db.collection("search_deck_logs");
+
+      // Fetch recent search logs for this user
+      const searchLogsSnapshot = await searchLogsCollection
+        .where("user_id", "==", userID)
+        .orderBy("searched_at", "desc")
+        .limit(5) // Number of recent searches to consider
+        .get();
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const vectors: number[][] = searchLogsSnapshot.docs.map((doc, idx) => {
+        const raw = doc.data().embedding;
+
+        // Unwrap it into a JS array
+        let arr: number[];
+        if (Array.isArray(raw)) {
+          arr = raw as number[];
+        } else if (raw.toArray) {
+          arr = raw.toArray();
+        } else if (raw.arrayValue?.values) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          arr = raw.arrayValue.values.map((v: any) => v.doubleValue);
+        } else {
+          throw new ApiError(
+            "Invalid embedding format in search log",
+            500,
+          );
+        }
+        return arr;
+      });
+
+
+      if (searchLogsSnapshot.empty) {
+        // Future TODO: Add fallback like popular public decks or recently accessed public decks
+        return {decks: []};
+      }
+
+      // Compute average vector of recent search queries
+      const averageVector = this.averageVectors(vectors);
+
+      // Reuse your existing searchPublicDecks() method
+      const recommendations = await this.searchPublicDecks(userID, averageVector, limit);
+
+      return recommendations;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      throw new ApiError(
+        "An error occurred while generating public deck recommendations.",
+        500,
+        {errorCode: "DATABASE_FETCH_ERROR", message: error.message}
+      );
+    }
+  }
+
+  /**
+   * Computes the average of an array of vectors.
+   *
+   * @param {Array<Array<number>>} vectors - An array of vectors (number arrays)
+   * @return {Array<number>} The averaged vector.
+   */
+  private averageVectors(vectors: number[][]): number[] {
+    const numVectors = vectors.length;
+    const vectorLength = vectors[0].length;
+
+    const sumVector = new Array(vectorLength).fill(0);
+
+    vectors.forEach((vector) => {
+      for (let i = 0; i < vectorLength; i++) {
+        sumVector[i] += vector[i];
+      }
+    });
+
+    return sumVector.map((sum) => sum / numVectors);
+  }
+
+  // LOGS
+
+  /**
    * Logs a deck search action to Firestore.
    *
    * @param {string} userId - The ID of the user who performed the search.
@@ -887,7 +1058,7 @@ export class DeckRepository extends FirebaseAdmin {
    * @return {Promise<void>} A promise that resolves when the log entry is created.
    * @throws {Error} Throws custom errors (SEARCH_LOG_WRITE_ERROR) on failure.
    */
-  public async logSearchDeck(userId: string, searchQuery: string, embedding: number[] ): Promise<void> {
+  public async logDeckSearch(userId: string, searchQuery: string, embedding: number[] ): Promise<void> {
     try {
       const db = this.getDb(); // your Firestore instance
       await db.collection("search_deck_logs").add({

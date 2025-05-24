@@ -158,11 +158,13 @@ export class DeckService extends Gemini {
     const firstEmbedObj = embedResponse.embeddings[0];
     const embeddedQuery: number[] = firstEmbedObj.values;
 
-    // 2. Kick off the log write — but don’t await it
-    void this.deckRepository.logSearchDeck(userID, query, embeddedQuery)
-      .catch((err) => {
-        logger.error("Error writing log to Firestore:", err);
-      });
+    // Kick off the log write if filter is not DELETED_DECKS
+    if (filter !== "DELETED_DECKS") {
+      void this.deckRepository.logDeckSearch(userID, query, embeddedQuery)
+        .catch((err) => {
+          logger.error("Error writing log to Firestore:", err);
+        });
+    }
 
     if (filter === "MY_DECKS") {
       decks = await this.deckRepository.searchOwnerDecks(userID, query, embeddedQuery, limit);
@@ -170,6 +172,8 @@ export class DeckService extends Gemini {
       decks = await this.deckRepository.searchSavedDecks(userID, embeddedQuery, limit);
     } else if (filter === "PUBLIC_DECKS") {
       decks = await this.deckRepository.searchPublicDecks(userID, embeddedQuery, limit);
+    } else if (filter === "DELETED_DECKS") {
+      decks = await this.deckRepository.searchDeletedDecks(userID, query, embeddedQuery, limit);
     }
 
     return decks;
@@ -346,5 +350,19 @@ export class DeckService extends Gemini {
     } catch (error) {
       if (error instanceof Error) throw error;
     }
+  }
+
+  /**
+   * Recommends public decks to a user based on their preferences or history.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user whose decks are to be retrieved.
+   * @param {number} limit - The maximum number of decks to retrieve per page.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async recommendPublicDecks(userID: string, limit: number): Promise<object | void> {
+    const decks = await this.deckRepository.recommendPublicDecks(userID, limit);
+    return decks;
   }
 }

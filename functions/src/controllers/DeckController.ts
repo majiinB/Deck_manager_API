@@ -262,7 +262,7 @@ export class DeckController {
     const userID = req.user?.user_id;
 
     // Determine filter
-    const filters = ["MY_DECKS", "SAVED_DECKS", "PUBLIC_DECKS"];
+    const filters = ["MY_DECKS", "SAVED_DECKS", "PUBLIC_DECKS", "DELETED_DECKS"];
     const filter = req.query.filter as string;
     const searchFilter = filters.includes(filter) ? filter : "PUBLIC_DECKS";
     if (!filters.includes(filter)) {
@@ -739,5 +739,47 @@ export class DeckController {
         return;
       }
     }
+  }
+
+  /**
+   * Handles the request to recommend public decks to a user.
+   * Validates query parameters (limit) and uses DeckService for retrieval.
+   *
+   * @param {AuthenticatedRequest} req - The HTTP request object, potentially including authenticated user info.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async recommendPublicDecks(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+
+    const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 10;
+    const userID = req.user?.user_id;
+
+    if (!userID) {
+      throw new ApiError("User ID is required to retrieve decks", 400, {
+        userID,
+        errorCode: "USER_ID_REQUIRED",
+      });
+    }
+
+    // Validate limit parameter
+    if (isNaN(limit) || (limit <= 1 || limit > 50)) {
+      throw new ApiError(
+        "Invalid limit value. It must be a positive number that is greater than 1 and is less than or equal to 50.",
+        400,
+        {userID, limit, errorCode: "INVALID_LIMIT_VALUE"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.recommendPublicDecks(userID, limit);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
   }
 }

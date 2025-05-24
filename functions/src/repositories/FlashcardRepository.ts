@@ -27,6 +27,7 @@
  */
 
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
+import {QuizRepository} from "./QuizRepository";
 
 /**
  * The `FlashcardRepository` class extends the `FirebaseAdmin` class to provide
@@ -35,6 +36,7 @@ import {FirebaseAdmin} from "../config/FirebaseAdmin";
  * and the Firebase database, encapsulating operations specific to flashcards.
  */
 export class FlashcardRepository extends FirebaseAdmin {
+  quizRepository: QuizRepository = new QuizRepository();
   /**
    * Retrieves a paginated list of non-deleted flashcards for a specific deck from Firestore.
    * Orders flashcards by creation date.
@@ -470,7 +472,7 @@ export class FlashcardRepository extends FirebaseAdmin {
         throw error;
       }
 
-      const batch = db.batch();
+      const deletedFlashcardPromises = [];
       let deletedCount = 0;
 
       for (const flashcardID of flashcardIDs) {
@@ -478,13 +480,17 @@ export class FlashcardRepository extends FirebaseAdmin {
         const flashcardSnapshot = await flashcardRef.get();
 
         if (flashcardSnapshot.exists) {
-          batch.delete(flashcardRef);
+          await this.quizRepository.deleteRelatedQuestionsByFlashcards(deckID, flashcardID);
+          // Recursively delete the flashcard and its subcollections
+          const deletePromise = db.recursiveDelete(flashcardRef);
+          deletedFlashcardPromises.push(deletePromise);
+
           deletedCount++;
         }
       }
 
-      // Commit batch delete
-      await batch.commit();
+      // Wait for all recursive deletes to complete
+      await Promise.all(deletedFlashcardPromises);
       console.log(`Deleted ${deletedCount} flashcards from deck ${deckID}`);
 
       // Update flashcard count
