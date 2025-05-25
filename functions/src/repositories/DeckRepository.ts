@@ -1076,4 +1076,78 @@ export class DeckRepository extends FirebaseAdmin {
       );
     }
   }
+
+  /**
+   * Logs a deck activity.
+   *
+   * @param {string} userId - The ID of the user who performed the search.
+   * @param {string} deckId - The ID of the deck that was searched.
+   * @param {string} eventType - The type of event (e.g., "view", "edit", "delete").
+   * @return {Promise<void>} A promise that resolves when the log entry is created.
+   * @throws {Error} Throws custom errors (SEARCH_LOG_WRITE_ERROR) on failure.
+   */
+  public async logDeckActivity(userId: string, deckId: string, eventType: string ): Promise<void> {
+    try {
+      const db = this.getDb(); // your Firestore instance
+      await db.collection("deck_logs").add({
+        user_id: userId,
+        deck_id: deckId,
+        event_type: eventType,
+        occured_at: FirebaseAdmin.getTimeStamp(),
+      });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      throw new ApiError(
+        "Failed to log deck activity",
+        500,
+        {errorCode: "ACTIVITY_LOG_WRITE_ERROR", message: err.message}
+      );
+    }
+  }
+
+  /**
+   * Gets latest deck activity.
+   *
+   * @param {string} userId - The ID of the user who performed the search.
+   * @return {Promise<void>} A promise that resolves when the log entry is created.
+   * @throws {Error} Throws custom errors (SEARCH_LOG_WRITE_ERROR) on failure.
+   */
+  public async getLatestDeckActivity(userId: string): Promise<object> {
+    try {
+      const db = this.getDb(); // your Firestore instance
+      const logActivity = await db.collection("deck_logs")
+        .where("user_id", "==", userId)
+        .orderBy("occured_at", "desc")
+        .limit(1)
+        .get();
+
+      if (logActivity.empty) {
+        throw new ApiError(
+          "No activity found for the specified user and deck",
+          404,
+          {errorCode: "ACTIVITY_LOG_NOT_FOUND", message: "No activity found for the specified user and deck"}
+        );
+      }
+
+      const deckId = logActivity.docs[0].data().deck_id;
+      const deckData = await this.getSpecificDeck(deckId);
+
+      if (!deckData) {
+        throw new ApiError(
+          "Deck not found for the latest activity",
+          404,
+          {errorCode: "DECK_NOT_FOUND", message: "Deck not found for the latest activity"}
+        );
+      }
+
+      return deckData;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      throw new ApiError(
+        "Failed to log deck activity",
+        500,
+        {errorCode: "ACTIVITY_LOG_WRITE_ERROR", message: err.message}
+      );
+    }
+  }
 }

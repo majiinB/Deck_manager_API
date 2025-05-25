@@ -78,4 +78,14 @@ export class FirebaseAdmin {
   static getTimeStamp(): Timestamp {
     return admin.firestore.Timestamp.now();
   }
+
+  /**
+   * Retrieves the current timestamp using Firebase Admin's Firestore Timestamp.
+   * @param {Date} date - The date to convert to a Firestore timestamp.
+   *
+   * @return {Timestamp} The current Firestore timestamp.
+   */
+  public static convertToTimestamp(date: Date): Timestamp {
+    return admin.firestore.Timestamp.fromDate(date);
+  }
 }

@@ -30,8 +30,9 @@ import {Utils} from "../utils/utils";
 import {Deck, SaveDeck} from "../interface/Deck";
 import {FlashcardService} from "../services/FlashCardService";
 import {Gemini} from "../config/Gemini";
-import {FieldValue} from "firebase-admin/firestore";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import {logger} from "firebase-functions";
+import {QuizRepository} from "../repositories/QuizRepository";
 
 /**
  * Service class responsible for handling operations related to decks.
@@ -364,5 +365,82 @@ export class DeckService extends Gemini {
   public async recommendPublicDecks(userID: string, limit: number): Promise<object | void> {
     const decks = await this.deckRepository.recommendPublicDecks(userID, limit);
     return decks;
+  }
+
+  /**
+   * Logs activity for a specific deck by a user.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user performing the activity.
+   * @param {string} deckId - The ID of the deck to log activity for.
+   * @param {string} eventType - The type of event to log.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async logDeckActivity(userID: string, deckId: string, eventType: string): Promise<void> {
+    await this.deckRepository.logDeckActivity(userID, deckId, eventType);
+  }
+
+  /**
+   * Logs a quiz attempt activity for a user.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user whose decks are to be retrieved.
+   * @param {string} deckId - The ID of the deck to log activity for.
+   * @param {Timestamp} attemptedAt - The timestamp when the quiz was attempted.
+   * @param {string} quizType - The type of quiz attempted (e.g., "multiple-choice", "true-false").
+   * @param {number} score - The score achieved in the quiz.
+   * @param {number} totalQuestions - The total number of questions in the quiz.
+   * @param {string[]} correctQuestionIds - An array of IDs of the questions answered correctly.
+   * @param {string[]} incorrectQuestionIds - An array of IDs of the questions answered incorrectly.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async logQuizAttempt(
+    userID: string,
+    deckId: string,
+    attemptedAt: Timestamp,
+    quizType: string,
+    score: number,
+    totalQuestions: number,
+    correctQuestionIds: string[],
+    incorrectQuestionIds: string[]
+  ): Promise<void> {
+    const quizRepo = new QuizRepository();
+    await quizRepo.logQuizAttemp(
+      userID,
+      deckId,
+      attemptedAt,
+      quizType,
+      score,
+      totalQuestions,
+      correctQuestionIds,
+      incorrectQuestionIds
+    );
+  }
+
+  /**
+   * Retrieves latest activity for a user.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user performing the activity.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async getLatestDeckActivity(userID: string): Promise<object | void> {
+    return await this.deckRepository.getLatestDeckActivity(userID);
+  }
+
+  /**
+   * Retrieves latest quiz attempt for a user.
+   * Delegates the retrieval logic to the deck repository.
+   *
+   * @param {string} userID - The ID of the user performing the activity.
+   * @return {Promise<object | void>} A promise resolving to the paginated deck data object from the repository, or void/throws on error.
+   * @throws Will re-throw errors encountered during repository access.
+   */
+  public async getLatestQuizAttempt(userID: string): Promise<object | void> {
+    const quizRepo = new QuizRepository();
+    return await quizRepo.getLatestQuizAttempt(userID);
   }
 }

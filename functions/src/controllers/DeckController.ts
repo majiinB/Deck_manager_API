@@ -32,6 +32,8 @@ import {ErrorResponse} from "../models/ErrorResponse";
 import {AuthenticatedRequest} from "../interface/AuthenticatedRequest";
 import {createDeckSchema} from "../schema/createDeckSchema";
 import {ApiError} from "../helpers/apiError";
+import {FirebaseAdmin} from "../config/FirebaseAdmin";
+import {callFirebaseAIAPI} from "../helpers/callDeckAiAPI";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -614,7 +616,31 @@ export class DeckController {
           res.status(400).json(baseResponse);
           return;
         }
-        updateData.is_private = isPrivate;
+
+        // Only allow if it being updated to true
+        if (isPrivate === true) {
+          console.log("entered 1");
+          updateData.is_private = isPrivate;
+        } else if (isPrivate === false) {
+          console.log("entered 2");
+          // If deck is being published call the moderation endpoint
+          const accessToken = (req.headers as { authorization: string }).authorization;
+          console.log(accessToken);
+          const url = "http://127.0.0.1:6001/deck-f429c/us-central1/deck_ai_api/v2/deck/moderate/";
+          const reqBody = {
+            deckId: deckID,
+          };
+          const result = await callFirebaseAIAPI(userID, accessToken, url, reqBody);
+
+          console.log(result);
+
+          baseResponse.setStatus(200);
+          baseResponse.setMessage("Publish Request is Now Pending");
+          baseResponse.setData(null);
+
+          res.status(200).json(baseResponse);
+          return;
+        }
       }
 
       if (isDeleted !== undefined) {
@@ -660,7 +686,6 @@ export class DeckController {
       }
 
       const deck = await this.deckService.updateDeck(userID, deckID, updateData);
-      console.log(updateData);
 
       baseResponse.setStatus(200);
       baseResponse.setMessage("Deck was successfully updated");
@@ -669,6 +694,7 @@ export class DeckController {
       res.status(200).json(baseResponse);
       return;
     } catch (error) {
+      console.log(error);
       if (error instanceof Error) {
         errorResponse.setError(error.name);
         errorResponse.setMessage(error.message);
@@ -777,6 +803,240 @@ export class DeckController {
     // Send success response
     baseResponse.setStatus(200);
     baseResponse.setMessage("Successfuly retrieved decks");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
+   * Handles the request to search for decks based on a search query.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async logDeckActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const userID = req.user?.user_id;
+
+    // Determine activity
+    const activities = ["IDENTIFICATION_QUIZ", "MULTIPLE_CHOICE_QUIZ", "STUDY"];
+    const activity = req.body.activity as string;
+
+    if (!activities.includes(activity)) {
+      throw new ApiError(
+        `Invalid activity code. Allowed activities: ${activities.join(", ")}`,
+        400,
+        {activity, errorCode: "INVALID_ACTIVITY_VALUE"}
+      );
+    }
+
+    const deckId = req.body.deckID;
+    if (!deckId || typeof deckId !== "string" || deckId.trim() === "") {
+      throw new ApiError(
+        "Deck ID is required to log deck activity",
+        400,
+        {deckId, errorCode: "DECK_ID_REQUIRED"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.logDeckActivity(userID, deckId, activity);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly logged deck activity");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
+   * Handles the request to search for decks based on a search query.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async logQuizAttemp(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const userID = req.user?.user_id;
+
+    const raw = req.body.attempted_at;
+    if (raw === undefined || raw === null) {
+      throw new ApiError(
+        "Attempted at timestamp is required to log quiz attempt",
+        400,
+        {raw, errorCode: "ATTEMPTED_AT_REQUIRED"}
+      );
+    }
+
+    let date: Date;
+    if (typeof raw === "string") {
+      date = new Date(raw);
+    } else if (typeof raw === "number") {
+      date = new Date(raw);
+    } else {
+      throw new ApiError(
+        "Attempted at timestamp must be a valid date string or timestamp",
+        400,
+        {raw, errorCode: "INVALID_ATTEMPTED_AT_TYPE"}
+      );
+    }
+
+    if (isNaN(date.getTime())) {
+      throw new ApiError(
+        "Attempted at timestamp must be a valid date string or timestamp",
+        400,
+        {raw, errorCode: "INVALID_ATTEMPTED_AT_VALUE"}
+      );
+    }
+
+    const attemptedAt = FirebaseAdmin.convertToTimestamp(date);
+
+    if (!attemptedAt) {
+      throw new ApiError(
+        "Attempted at timestamp is required to log quiz attempt",
+        400,
+        {attemptedAt, errorCode: "ATTEMPTED_AT_REQUIRED"}
+      );
+    }
+
+    const quizTypes = ["IDENTIFICATION_QUIZ", "MULTIPLE_CHOICE_QUIZ"];
+    const quizType = req.body.quizType as string;
+    if (!quizTypes.includes(quizType)) {
+      throw new ApiError(
+        `Invalid quiz type. Allowed types: ${quizTypes.join(", ")}`,
+        400,
+        {quizType, errorCode: "INVALID_QUIZ_TYPE"}
+      );
+    }
+
+    const score = req.body.score;
+    if (typeof score !== "number" || score < 0) {
+      throw new ApiError(
+        "Score is required to log quiz attempt and must be a non-negative number",
+        400,
+        {score, errorCode: "SCORE_REQUIRED"}
+      );
+    }
+
+    const totalQuestions = req.body.totalQuestions;
+    if (typeof totalQuestions !== "number" || totalQuestions <= 0) {
+      throw new ApiError(
+        "Total questions is required to log quiz attempt and must be a positive number",
+        400,
+        {totalQuestions, errorCode: "TOTAL_QUESTIONS_REQUIRED"}
+      );
+    }
+
+    const correctQuestionIds = req.body.correctQuestionIds;
+    if (!Array.isArray(correctQuestionIds) || correctQuestionIds.some((id) => typeof id !== "string")) {
+      throw new ApiError(
+        "Correct question IDs are required to log quiz attempt and must be an array of strings",
+        400,
+        {correctQuestionIds, errorCode: "CORRECT_QUESTION_IDS_REQUIRED"}
+      );
+    }
+
+    const incorrectQuestionIds = req.body.incorrectQuestionIds;
+    if (!Array.isArray(incorrectQuestionIds) || incorrectQuestionIds.some((id) => typeof id !== "string")) {
+      throw new ApiError(
+        "Incorrect question IDs are required to log quiz attempt and must be an array of strings",
+        400,
+        {incorrectQuestionIds, errorCode: "INCORRECT_QUESTION_IDS_REQUIRED"}
+      );
+    }
+
+    const deckID = req.body.deckID;
+    if (!deckID || typeof deckID !== "string" || deckID.trim() === "") {
+      throw new ApiError(
+        "Deck ID is required to log deck activity",
+        400,
+        {deckID, errorCode: "DECK_ID_REQUIRED"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.logQuizAttempt(
+      userID,
+      deckID,
+      attemptedAt,
+      quizType,
+      score,
+      totalQuestions,
+      correctQuestionIds,
+      incorrectQuestionIds
+    );
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly logged quiz attempt");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
+   * Handles the request to search for decks based on a search query.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async getLatestDeckActivity(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const userID = req.user?.user_id;
+
+    const deckId = req.body.deckID;
+    if (!deckId || typeof deckId !== "string" || deckId.trim() === "") {
+      throw new ApiError(
+        "Deck ID is required to log deck activity",
+        400,
+        {deckId, errorCode: "DECK_ID_REQUIRED"}
+      );
+    }
+
+    // Call service method
+    const decks = await this.deckService.getLatestDeckActivity(userID);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly logged deck activity");
+    baseResponse.setData(decks);
+
+    res.status(200).json(baseResponse);
+    return;
+  }
+
+  /**
+   * Handles the request to get the latest quiz attempt for a user.
+   * Validates query parameters (searchQuery, limit) and uses DeckService for retrieval.
+   * Responds with paginated deck data or an error.
+   *
+   * @param {Request} req - The HTTP request object containing search parameters.
+   * @param {Response} res - The HTTP response object.
+   * @return {Promise<void>} Sends a JSON response.
+   */
+  public async getLatestQuizAttempt(req: AuthenticatedRequest, res: Response): Promise<void> {
+    const baseResponse = new BaseResponse();
+    const userID = req.user?.user_id;
+
+    // Call service method
+    const decks = await this.deckService.getLatestQuizAttempt(userID);
+
+    // Send success response
+    baseResponse.setStatus(200);
+    baseResponse.setMessage("Successfuly logged deck activity");
     baseResponse.setData(decks);
 
     res.status(200).json(baseResponse);

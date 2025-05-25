@@ -164,6 +164,16 @@ router.post("/unsave/:deckID", async (req: Request, res: Response) => {
 });
 
 /**
+ * @route DELETE api/v1/decks/:deckID
+ * @description Deletes a deck permanently (HARD delete perform SOFT deletion by updating the is_deleted flag).
+ * @param {string} deckID - The unique identifier of the deck to delete (from URL params).
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.post("/delete", async (req: Request, res: Response) => {
+  await deckController.deleteDeck(req, res);
+});
+
+/**
  * @route PUT api/v1/decks/:deckID
  * @description Updates an existing deck.
  * @param {string} deckID - The unique identifier of the deck to update (from URL params).
@@ -179,14 +189,33 @@ router.put("/:deckID", async (req: Request, res: Response) => {
 });
 
 /**
- * @route DELETE api/v1/decks/:deckID
- * @description Deletes a deck permanently (HARD delete perform SOFT deletion by updating the is_deleted flag).
- * @param {string} deckID - The unique identifier of the deck to delete (from URL params).
+ * @route POST api/v1/decks/log/activity
+ * @description Logs activity related to a deck.
  * @returns {object} JSON response with a success message or an error.
  */
-router.post("/delete", async (req: Request, res: Response) => {
-  await deckController.deleteDeck(req, res);
-});
+router.post("/log/activity", asyncHandler(deckController.logDeckActivity.bind(deckController)));
+
+/**
+ * @route POST api/v1/decks/log/activity
+ * @description Logs activity related to a deck.
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.post("/log/quiz", asyncHandler(deckController.logQuizAttemp.bind(deckController)));
+
+/**
+ * @route POST api/v1/decks/log/activity
+ * @description Logs activity related to a deck.
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.get("/log/activity", asyncHandler(deckController.getLatestDeckActivity.bind(deckController)));
+
+/**
+ * @route POST api/v1/decks/log/activity
+ * @description Logs activity related to a deck.
+ * @returns {object} JSON response with a success message or an error.
+ */
+router.get("/log/quiz", asyncHandler(deckController.getLatestQuizAttempt.bind(deckController)));
+
 
 // FLASHCARDS ROUTES
 
