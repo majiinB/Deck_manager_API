@@ -626,7 +626,7 @@ export class DeckController {
           // If deck is being published call the moderation endpoint
           const accessToken = (req.headers as { authorization: string }).authorization;
           console.log(accessToken);
-          const url = "http://127.0.0.1:6001/deck-f429c/us-central1/deck_ai_api/v2/deck/moderate/";
+          const url = "https://deck-ai-api-taglvgaoma-uc.a.run.app/v2/deck/moderate/";
           const reqBody = {
             deckId: deckID,
           };
