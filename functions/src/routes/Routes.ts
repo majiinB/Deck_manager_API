@@ -41,7 +41,7 @@ import {asyncHandler} from "../middleware/asyncHandler";
 // eslint-disable-next-line new-cap
 const router = Router();
 const flashcardService = new FlashcardService(new FlashcardRepository);
-const deckService = new DeckService(new DeckRepository, flashcardService);
+const deckService = new DeckService(new DeckRepository);
 const deckController = new DeckController(deckService);
 const flashcardController = new FlashcardController(flashcardService);
 

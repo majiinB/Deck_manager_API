@@ -28,7 +28,6 @@ import {DeckRepository} from "../repositories/DeckRepository";
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {Utils} from "../utils/utils";
 import {Deck, SaveDeck} from "../interface/Deck";
-import {FlashcardService} from "../services/FlashCardService";
 import {Gemini} from "../config/Gemini";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import {logger} from "firebase-functions";
@@ -45,11 +44,6 @@ export class DeckService extends Gemini {
    * updating, and deleting deck entities.
    */
   private deckRepository: DeckRepository;
-  /**
-   * A service instance for managing flashcard-related operations.
-   * It acts as an intermediary between the controller and the repository
-   */
-  private flashcardService: FlashcardService;
 
   /**
    * Initializes the DeckService with a DeckRepository instance.
@@ -57,10 +51,9 @@ export class DeckService extends Gemini {
    * @param {DeckRepository} deckRepository - The repository handling data operations.
    * @param {FlashcardService} flashcardService - The repository handling data operations.
    */
-  constructor(deckRepository: DeckRepository, flashcardService: FlashcardService) {
+  constructor(deckRepository: DeckRepository) {
     super();
     this.deckRepository = deckRepository;
-    this.flashcardService = flashcardService;
   }
 
   /**
@@ -199,6 +192,7 @@ export class DeckService extends Gemini {
     userID: string,
     coverPhoto: string | null = null,
     description: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     flashcards: Array<{ term: string; definition: string }> | undefined): Promise<object | void> {
     const coverPhotoRef = coverPhoto ?? "https://firebasestorage.googleapis.com/v0/b/deck-f429c.appspot.com/o/deckCovers%2Fdefault%2FdeckDefault.png?alt=media&token=de6ac50d-13d0-411c-934e-fbeac5b9f6e0";
 
@@ -227,10 +221,10 @@ export class DeckService extends Gemini {
 
     const decks = await this.deckRepository.createDeck(deck);
 
-    if (flashcards && flashcards.length > 0) {
-      const deckID = decks.id;
-      await this.flashcardService.createFlashcards(userID, deckID, flashcards);
-    }
+    // if (flashcards && flashcards.length > 0) {
+    //   const deckID = decks.id;
+    //   await this.flashcardService.createFlashcards(userID, deckID, flashcards);
+    // }
     return {
       deck: decks,
     };

@@ -683,13 +683,13 @@ export class DeckRepository extends FirebaseAdmin {
   }
 
   /**
-   * Creates a new deck document in the Firestore 'decks' collection.
-   *
-   * @param {object} deckData - The data object for the new deck (should match expected schema).
-   * @return {Promise<Deck>} A promise resolving to the created deck object, including its ID.
-   * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
-   */
-  public async createDeck(deckData: Omit<Deck, "id">): Promise<Deck> {
+ * Creates a new deck document in the Firestore 'decks' collection.
+ *
+ * @param {object} deckData - The data object for the new deck (should match expected schema).
+ * @return {Promise<Deck>} A promise resolving to the created deck object, including its ID and owner_name.
+ * @throws {Error} Throws custom errors (INVALID_DECK_DATA, DATABASE_CREATE_ERROR) on failure or invalid input.
+ */
+  public async createDeck(deckData: Omit<Deck, "id" | "owner_name">): Promise<object> {
     try {
       // Validate input
       if (!deckData || typeof deckData !== "object") {
@@ -698,6 +698,7 @@ export class DeckRepository extends FirebaseAdmin {
 
       const db = this.getDb();
 
+      // Create deck document
       const res = await db.collection("decks").add(deckData);
 
       if (!res || !res.id) {
@@ -706,12 +707,26 @@ export class DeckRepository extends FirebaseAdmin {
         });
       }
 
-      // Destructure the deck data to exclude embedding_field
+      // Destructure to exclude embedding_field
       // eslint-disable-next-line camelcase, @typescript-eslint/no-unused-vars
       const {embedding_field, ...deckDataWithoutEmbedding} = deckData;
 
-      // access newly created deck ID by `res.id`
-      const deck: Deck = ({id: res.id, ...deckDataWithoutEmbedding} as Deck);
+      // Fetch owner name using owner_id
+      const ownerMap = await this.userRepository.getOwnerNames([deckData.owner_id]);
+      const ownerName = ownerMap[deckData.owner_id];
+
+      if (!ownerName) {
+        throw new ApiError("Owner name could not be resolved", 500, {
+          code: "OWNER_NAME_NOT_FOUND",
+        });
+      }
+
+      // Return full deck object with id and owner_name
+      const deck = {
+        id: res.id,
+        owner_name: ownerName,
+        ...deckDataWithoutEmbedding,
+      };
 
       return deck;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -726,6 +741,7 @@ export class DeckRepository extends FirebaseAdmin {
       );
     }
   }
+
 
   /**
    * Creates a new deck document in the Firestore 'saved_decks' collection.
