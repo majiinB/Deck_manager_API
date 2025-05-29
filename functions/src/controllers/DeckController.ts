@@ -34,6 +34,7 @@ import {createDeckSchema} from "../schema/createDeckSchema";
 import {ApiError} from "../helpers/apiError";
 import {FirebaseAdmin} from "../config/FirebaseAdmin";
 import {callFirebaseAIAPI} from "../helpers/callDeckAiAPI";
+import {DeckRepository} from "../repositories/DeckRepository";
 
 /**
  * Class responsible for initializing and managing the services related to deck
@@ -619,10 +620,19 @@ export class DeckController {
 
         // Only allow if it being updated to true
         if (isPrivate === true) {
-          console.log("entered 1");
           updateData.is_private = isPrivate;
         } else if (isPrivate === false) {
-          console.log("entered 2");
+          // If the deck is being set to private, check if there is a pending publish request
+          const deckRepo = new DeckRepository();
+          const hasPending = await deckRepo.hasPendingPublishRequest(deckID);
+          if (hasPending) {
+            throw new ApiError(
+              "A publish request for this deck is already pending.",
+              400,
+              {errorCode: "PUBLISH_REQUEST_ALREADY_PENDING", message: "A pending publish request already exists for this deck."}
+            );
+          }
+
           // If deck is being published call the moderation endpoint
           const accessToken = (req.headers as { authorization: string }).authorization;
           console.log(accessToken);

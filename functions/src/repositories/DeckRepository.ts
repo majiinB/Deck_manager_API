@@ -1166,4 +1166,30 @@ export class DeckRepository extends FirebaseAdmin {
       );
     }
   }
+
+  /**
+ * Checks if there is a pending publish request for a given deck.
+ *
+ * @param {string} deckId - The ID of the deck to check.
+ * @return {Promise<boolean>} A promise that resolves to true if a pending request exists, false otherwise.
+ * @throws {ApiError} Throws custom errors (PUBLISH_REQUEST_CHECK_ERROR) on failure.
+ */
+  public async hasPendingPublishRequest(deckId: string): Promise<boolean> {
+    try {
+      const db = this.getDb(); // your Firestore instance
+      const requestSnapshot = await db.collection("publish_requests")
+        .where("deck_id", "==", deckId)
+        .where("mod_verdict", "==", "PENDING")
+        .get();
+
+      return !requestSnapshot.empty;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
+      throw new ApiError(
+        "Failed to check for pending publish requests",
+        500,
+        {errorCode: "PUBLISH_REQUEST_CHECK_ERROR", message: err.message}
+      );
+    }
+  }
 }
