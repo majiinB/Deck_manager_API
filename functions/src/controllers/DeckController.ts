@@ -635,14 +635,12 @@ export class DeckController {
 
           // If deck is being published call the moderation endpoint
           const accessToken = (req.headers as { authorization: string }).authorization;
-          console.log(accessToken);
+
           const url = "https://deck-ai-api-taglvgaoma-uc.a.run.app/v2/deck/moderate/";
           const reqBody = {
             deckId: deckID,
           };
-          const result = await callFirebaseAIAPI(userID, accessToken, url, reqBody);
-
-          console.log(result);
+          callFirebaseAIAPI(userID, accessToken, url, reqBody);
 
           baseResponse.setStatus(200);
           baseResponse.setMessage("Publish Request is Now Pending");

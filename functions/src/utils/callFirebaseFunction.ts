@@ -28,7 +28,7 @@ export async function callFirebaseFunction<T>(
       headers: options.headers,
       data: options.data,
       params: options.params,
-      timeout: options.timeoutMs || 5000, // 5s default timeout
+      timeout: options.timeoutMs || 20000, // 5s default timeout
     });
 
     return response.data;
